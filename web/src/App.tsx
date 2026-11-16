@@ -23,15 +23,22 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-/** 未初始化 → 引导到 /setup；已初始化且在 /setup → 跳 /login */
+/**
+ * 首次运行引导守卫。
+ *
+ * 注意：这里的重定向必须**判断当前路径**。`<Navigate to="/setup">` 渲染结果是 `null`，
+ * 若用户本来就在 /setup（后端可达且库未初始化就是这种情况），replace 到同一路径会
+ * 触发「渲染 → 重定向 → 再渲染」的死循环，整棵树永远是 null，表现为白屏。
+ */
 function AuthRoute({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((s) => s.accessToken);
+  const { pathname } = useLocation();
   const [checking, setChecking] = useState(true);
   const [initialized, setInitialized] = useState<boolean | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    // 健康检查为公开端点，失败时视为"未知"，直接放行到登录页
+    // 状态接口为公开端点，失败时视为"未知"，直接放行到登录页
     fetch('/api/v1/system/status')
       .then((r) => r.json())
       .then((body) => {
@@ -55,12 +62,18 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
   if (checking) {
     return (
       <div className="page-center">
-        <Spin size="large" tip="加载中..." />
+        <Spin size="large" />
       </div>
     );
   }
-  if (initialized === false) return <Navigate to="/setup" replace />;
+
+  const onSetupPage = pathname === '/setup';
+  // 已登录且库已初始化 → 直接进主界面
   if (token && initialized) return <Navigate to="/" replace />;
+  // 库未初始化：除 /setup 之外的页面都引导过去（已在该页则继续渲染，避免死循环）
+  if (initialized === false && !onSetupPage) return <Navigate to="/setup" replace />;
+  // 库已初始化却停在 /setup → 去登录页
+  if (initialized === true && onSetupPage) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
 
@@ -85,7 +98,8 @@ export default function App() {
       }}
     >
       <AntdApp>
-        <BrowserRouter>
+        {/* 提前启用 v7 行为，消除 React Router 的 future flag 警告（本项目无 splat 相对路由，风险为零） */}
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <AutoLock />
           <Routes>
             <Route

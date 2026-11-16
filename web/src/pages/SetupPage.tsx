@@ -65,7 +65,8 @@ export default function SetupPage() {
   if (checking) {
     return (
       <div className="page-center">
-        <Spin size="large" tip="检查系统状态..." />
+        {/* antd 的 Spin 只有 nest/fullscreen 模式才会显示 tip，裸用会告警，故不带文案 */}
+        <Spin size="large" />
       </div>
     );
   }

@@ -41,14 +41,6 @@ body {
   user-select: all;
 }
 
-/* antd Spin 在 page-center 内的提示文字 */
-.page-center .ant-spin {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-}
-
 /* 表格中操作按钮组更紧凑 */
 .ant-table-tbody .ant-btn-text {
   padding-inline: 4px;
