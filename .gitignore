@@ -25,3 +25,13 @@ Thumbs.db
 
 # 测试覆盖
 coverage/
+
+# 打包 / 归档文件
+# 注意：项目压缩包极易把 data/（含 secrets.json 明文密钥、jwt.secret、master.json）
+# 一起装进去，一旦提交就等于泄漏整库解密能力，故一律不入库。
+*.zip
+*.7z
+*.rar
+*.tar
+*.tar.gz
+*.tgz
