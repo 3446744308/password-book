@@ -23,7 +23,17 @@ instance.interceptors.request.use((config) => {
 
 let refreshing: Promise<string | null> | null = null;
 
-async function refreshAccessToken(): Promise<string | null> {
+/**
+ * 用 HttpOnly 刷新令牌静默换新访问令牌。
+ *
+ * 两个场景共用同一实现：
+ * 1. 访问令牌过期（15/30 分钟）→ 拦截器自动续期并重放原请求
+ * 2. **页面刷新**：访问令牌只存内存，刷新后内存清空，但刷新令牌 Cookie 还在
+ *    （默认 7 天），启动时调用它即可免去重新输入主密码
+ *
+ * 失败时返回 null 且不清登录态，由调用方决定如何处理。
+ */
+export async function tryRefreshSession(): Promise<string | null> {
   try {
     const res = await axios.post('/api/v1/auth/refresh', {}, { withCredentials: true });
     const token = res.data?.data?.accessToken as string | undefined;
@@ -33,7 +43,6 @@ async function refreshAccessToken(): Promise<string | null> {
     }
     return null;
   } catch {
-    useAuthStore.getState().clear();
     return null;
   }
 }
@@ -62,7 +71,7 @@ instance.interceptors.response.use(
       !config._retried
     ) {
       config._retried = true;
-      refreshing = refreshing ?? refreshAccessToken();
+      refreshing = refreshing ?? tryRefreshSession();
       const newToken = await refreshing;
       refreshing = null;
       if (newToken) {

@@ -10,6 +10,7 @@ import ListPage from './pages/ListPage';
 import CategoriesPage from './pages/CategoriesPage';
 import SettingsPage from './pages/SettingsPage';
 import NotFoundPage from './pages/NotFoundPage';
+import { tryRefreshSession } from './api';
 import useAuthStore from './stores/authStore';
 import useUIStore from './stores/uiStore';
 
@@ -77,6 +78,42 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * 会话恢复：页面刷新后访问令牌随内存一起消失，但刷新令牌还在 HttpOnly Cookie 里
+ * （默认 7 天）。启动时先尝试静默续期，成功则直接进入主界面，不必重新输入主密码。
+ *
+ * 主动「锁定」或更换主密码时服务端会清掉该 Cookie，因此刷新令牌不在时这里必然失败，
+ * 仍然会落到登录页——锁定的语义没有被削弱。
+ */
+function SessionBootstrap({ children }: { children: React.ReactNode }) {
+  const [restoring, setRestoring] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    const restore = async () => {
+      // 内存里已有令牌（如 HMR 后再次挂载）就不必再请求
+      if (!useAuthStore.getState().accessToken) {
+        await tryRefreshSession();
+      }
+      if (!cancelled) setRestoring(false);
+    };
+    void restore();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // 恢复期间不要渲染路由，否则 RequireAuth 会先把人弹到登录页
+  if (restoring) {
+    return (
+      <div className="page-center">
+        <Spin size="large" />
+      </div>
+    );
+  }
+  return <>{children}</>;
+}
+
 export default function App() {
   const themeMode = useUIStore((s) => s.theme);
   const dark = themeMode === 'dark';
@@ -101,42 +138,44 @@ export default function App() {
         {/* 提前启用 v7 行为，消除 React Router 的 future flag 警告（本项目无 splat 相对路由，风险为零） */}
         <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <AutoLock />
-          <Routes>
-            <Route
-              path="/setup"
-              element={
-                <AuthRoute>
-                  <SetupPage />
-                </AuthRoute>
-              }
-            />
-            <Route
-              path="/login"
-              element={
-                <AuthRoute>
-                  <LoginPage />
-                </AuthRoute>
-              }
-            />
-            <Route
-              element={
-                <RequireAuth>
-                  <MainLayout />
-                </RequireAuth>
-              }
-            >
-              <Route path="/" element={<ListPage />} />
-              <Route path="/categories" element={<CategoriesPage />} />
-              {/* 设置分区与侧栏子菜单一一对应；/settings 重定向到第一个分区 */}
-              <Route path="/settings" element={<Navigate to="/settings/master" replace />} />
-              <Route path="/settings/master" element={<SettingsPage section="master" />} />
-              <Route path="/settings/config" element={<SettingsPage section="config" />} />
-              <Route path="/settings/backup" element={<SettingsPage section="backup" />} />
-              <Route path="/settings/audit" element={<SettingsPage section="audit" />} />
-              <Route path="/settings/about" element={<SettingsPage section="about" />} />
-              <Route path="*" element={<NotFoundPage />} />
-            </Route>
-          </Routes>
+          <SessionBootstrap>
+            <Routes>
+              <Route
+                path="/setup"
+                element={
+                  <AuthRoute>
+                    <SetupPage />
+                  </AuthRoute>
+                }
+              />
+              <Route
+                path="/login"
+                element={
+                  <AuthRoute>
+                    <LoginPage />
+                  </AuthRoute>
+                }
+              />
+              <Route
+                element={
+                  <RequireAuth>
+                    <MainLayout />
+                  </RequireAuth>
+                }
+              >
+                <Route path="/" element={<ListPage />} />
+                <Route path="/categories" element={<CategoriesPage />} />
+                {/* 设置分区与侧栏子菜单一一对应；/settings 重定向到第一个分区 */}
+                <Route path="/settings" element={<Navigate to="/settings/master" replace />} />
+                <Route path="/settings/master" element={<SettingsPage section="master" />} />
+                <Route path="/settings/config" element={<SettingsPage section="config" />} />
+                <Route path="/settings/backup" element={<SettingsPage section="backup" />} />
+                <Route path="/settings/audit" element={<SettingsPage section="audit" />} />
+                <Route path="/settings/about" element={<SettingsPage section="about" />} />
+                <Route path="*" element={<NotFoundPage />} />
+              </Route>
+            </Routes>
+          </SessionBootstrap>
         </BrowserRouter>
       </AntdApp>
     </ConfigProvider>

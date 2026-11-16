@@ -81,6 +81,8 @@ curl -X POST http://localhost:3100/api/v1/entries \
 2. `POST /auth/login` 提交主密码，换取 `accessToken`（JWT，默认 30 分钟）+ `refreshToken`（HttpOnly Cookie，7 天）。
 3. 后续请求携带 `Authorization: Bearer <accessToken>`。
 4. 过期 → `401 TOKEN_EXPIRED` → 调 `POST /auth/refresh` 静默换新（App 亦然）。
+   **页面刷新/冷启动**同样用它：访问令牌只存内存，刷新后内存清空，客户端应先用
+   Cookie 里的 `refreshToken` 调一次 `/auth/refresh` 换回访问令牌，成功则免去重输主密码。
 5. 会话时长由服务端 `config.json` 的 **`lockMinutes`** 决定，它**就是访问令牌的实际 TTL**
    （`expiresIn = lockMinutes × 60`，登录与刷新共用同一取值）。修改 `lockMinutes` 只影响
    **之后新签发**的令牌，已签发的令牌按原 TTL 自然过期。
@@ -763,6 +765,8 @@ Set-Cookie: refreshToken=<...>; HttpOnly; Secure; SameSite=Strict; Path=/api/v1/
 
 - Axios 拦截器：请求自动带 `Authorization`；响应统一解包 `{ data }`，错误按第 7 章映射。
 - 401 处理：`TOKEN_EXPIRED` → `POST /auth/refresh` → 重放原请求一次 → 仍失败跳登录。
+- 启动恢复：应用挂载时若内存中没有访问令牌，先 `POST /auth/refresh`（携带 Cookie）尝试静默恢复会话；
+  成功直接进入主界面，失败才渲染登录页。**主动「锁定」会清除该 Cookie**，因此锁定后刷新仍须输入主密码。
 
 ### 8.2 手机 App 接入要点（预留）
 

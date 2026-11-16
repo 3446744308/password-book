@@ -12,15 +12,17 @@ import { render, screen } from '@testing-library/react';
 
 const mocks = vi.hoisted(() => ({
   getStatus: vi.fn(),
+  tryRefreshSession: vi.fn(),
 }));
 
-// 只替掉 getStatus，其余 api 导出保持真实（避免遗漏某个具名导出导致模块报错）
+// 只替掉 getStatus 与启动续期，其余 api 导出保持真实（避免遗漏具名导出导致模块报错）
 vi.mock('../src/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../src/api')>();
-  return { ...actual, getStatus: mocks.getStatus };
+  return { ...actual, getStatus: mocks.getStatus, tryRefreshSession: mocks.tryRefreshSession };
 });
 
 import App from '../src/App';
+import { useAuthStore } from '../src/stores/authStore';
 
 type StatusBody = Record<string, unknown>;
 
@@ -39,9 +41,12 @@ function setPath(pathname: string) {
 }
 
 beforeEach(() => {
-  mocks.getStatus.mockReset();
+  Object.values(mocks).forEach((fn) => fn.mockReset());
   // 页面组件自己也会取状态；默认「未初始化」
   mocks.getStatus.mockResolvedValue({ initialized: false, lockMinutes: 30 });
+  // 默认没有可用的刷新令牌（刷新令牌 Cookie 不存在 / 已过期）
+  mocks.tryRefreshSession.mockResolvedValue(null);
+  useAuthStore.getState().clear();
 });
 
 afterEach(() => {
@@ -91,5 +96,50 @@ describe('已初始化库的引导', () => {
     render(<App />);
 
     expect(await screen.findByText('解锁密码本', {}, { timeout: 4000 })).toBeTruthy();
+  }, 10_000);
+});
+
+describe('页面刷新后的会话恢复', () => {
+  it('刷新令牌有效时静默续期，直接停在主界面而不是弹回登录页', async () => {
+    stubStatus({ initialized: true, lockMinutes: 30 });
+    mocks.getStatus.mockResolvedValue({ initialized: true, lockMinutes: 30 });
+    mocks.tryRefreshSession.mockImplementation(async () => {
+      useAuthStore.getState().setToken('restored-token');
+      return 'restored-token';
+    });
+    setPath('/');
+
+    render(<App />);
+
+    // 进入主界面（主框架头部出现），而不是登录页
+    expect(await screen.findByText('本地加密 · JSON 存储', {}, { timeout: 4000 })).toBeTruthy();
+    expect(screen.queryByText('解锁密码本')).toBeNull();
+    expect(window.location.pathname).toBe('/');
+    expect(mocks.tryRefreshSession).toHaveBeenCalledTimes(1);
+  }, 10_000);
+
+  it('没有刷新令牌时仍然要求输入主密码', async () => {
+    stubStatus({ initialized: true, lockMinutes: 30 });
+    mocks.getStatus.mockResolvedValue({ initialized: true, lockMinutes: 30 });
+    mocks.tryRefreshSession.mockResolvedValue(null);
+    setPath('/');
+
+    render(<App />);
+
+    expect(await screen.findByText('解锁密码本', {}, { timeout: 4000 })).toBeTruthy();
+    expect(window.location.pathname).toBe('/login');
+    expect(useAuthStore.getState().accessToken).toBeNull();
+  }, 10_000);
+
+  it('内存里已有令牌时不再多余地调用续期接口', async () => {
+    stubStatus({ initialized: true, lockMinutes: 30 });
+    mocks.getStatus.mockResolvedValue({ initialized: true, lockMinutes: 30 });
+    useAuthStore.getState().setToken('existing-token');
+    setPath('/');
+
+    render(<App />);
+
+    expect(await screen.findByText('本地加密 · JSON 存储', {}, { timeout: 4000 })).toBeTruthy();
+    expect(mocks.tryRefreshSession).not.toHaveBeenCalled();
   }, 10_000);
 });
