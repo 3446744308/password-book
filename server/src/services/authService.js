@@ -1,3 +1,5 @@
+import { randomBytes } from 'node:crypto';
+import fs from 'node:fs/promises';
 import { config } from '../config.js';
 import * as repo from '../storage/repository.js';
 import { cryptoService } from '../crypto/index.js';
@@ -10,6 +12,7 @@ import { ulid, nowIso } from '../utils/ids.js';
 import { masterPasswordIssues } from '../utils/validate.js';
 import { readJson, writeJson } from '../storage/fsx.js';
 import { paths } from '../storage/paths.js';
+import { ensureDataDirs, ensureSchema } from '../storage/migrate.js';
 import { SCHEMA_VERSION } from '../version.js';
 
 /** 认证服务：初始化 / 登录 / 限速计数 / 令牌 / 更换主密码 */
@@ -47,12 +50,24 @@ export const authService = {
     const cfg = await repo.readConfig();
     const issues = masterPasswordIssues(masterPassword, cfg.minPasswordLength);
     if (issues.length) throw errors.validation(issues);
+
+    // data/ 可能在服务运行期间被删掉：先把磁盘结构补齐，再以磁盘为准判断是否已初始化
+    await ensureDataDirs();
     if (await repo.readMaster()) throw errors.alreadyInitialized();
+    await ensureSchema();
 
     await cryptoService.setup(masterPassword);
     await repo.ensureDefaultCategory();
     // 写入内置常用分类（docs/01 §4.2），只执行一次
     const seeded = await repo.seedPresetCategories();
+
+    // 全新的库：轮换 JWT 签名密钥，让此前签发的令牌与刷新 Cookie 全部失效，
+    // 否则数据目录被清空后重建时，旧会话可以不经新主密码就进入新库
+    const secret = randomBytes(48).toString('hex');
+    await fs.writeFile(config.jwtSecretFile, secret, { encoding: 'utf8', mode: 0o600 });
+    runtime.jwtSecret = secret;
+    runtime.revokedJti.clear();
+
     await repo.appendAudit('SETUP_OK', {
       ip,
       detail: `mode=${cryptoService.mode},presets=${seeded.seeded}`,

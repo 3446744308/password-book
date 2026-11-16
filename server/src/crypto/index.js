@@ -71,9 +71,19 @@ class CryptoService {
   /**
    * 初始化：创建主密码验证器 + KDF 参数 + 数据加密密钥（DEK）
    * dev：secrets.json 存 dek 明文 + dekEnc（供切 strict 迁移）；strict：只存 dekEnc
+   *
+   * 注意：是否已初始化**以磁盘为准**。data/ 可能在服务运行期间被手工删除，
+   * 此时内存里的 #initialized 仍是 true；只看内存会导致"删了数据目录还提示
+   * 已初始化"，永远无法重新创建密码本。
    */
   async setup(masterPassword) {
-    if (this.#initialized) throw errors.alreadyInitialized();
+    const existing = await readJson(paths.masterFile, null);
+    if (existing) throw errors.alreadyInitialized();
+
+    // 磁盘上没有 master.json：把内存态重置为未初始化
+    this.#initialized = false;
+    this.#key = null;
+
     const kdf = createKdfParams(config.kdfIterations);
     const kek = await deriveKek(masterPassword, kdf);
     const verifier = createVerifier(kek);

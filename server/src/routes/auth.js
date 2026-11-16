@@ -9,24 +9,25 @@ import { config } from '../config.js';
 
 const router = Router();
 
-/** 登录/setup 限速：5 次 / 5 分钟 / IP（docs/03 §2.2） */
-const loginLimiter = rateLimit({
-  windowMs: config.loginRate.windowMs,
-  max: config.loginRate.max,
-  name: 'login',
-});
-/** 更换主密码限速（独立桶，避免与登录互相挤占） */
-const masterLimiter = rateLimit({
-  windowMs: config.loginRate.windowMs,
-  max: config.loginRate.max,
-  name: 'master',
-});
+/**
+ * 敏感端点的限速中间件。
+ *
+ * **默认关闭**（`RATE_LIMIT_ENABLED=true` 可开启）：频繁重试主密码时先撞 429 反而
+ * 挡在「失败锁定」前面，体验很差。关闭后暴力破解仍由连续失败锁定兜底
+ * （默认 5 次失败 → 锁定 15 分钟）。详见 docs/03 §1.6。
+ */
+const loginGuards = config.rateLimitEnabled
+  ? [rateLimit({ windowMs: config.loginRate.windowMs, max: config.loginRate.max, name: 'login' })]
+  : [];
+const masterGuards = config.rateLimitEnabled
+  ? [rateLimit({ windowMs: config.loginRate.windowMs, max: config.loginRate.max, name: 'master' })]
+  : [];
 
 const PASSWORD_RULE = { field: 'masterPassword', required: true, trim: false, maxLength: 512 };
 
 router.post(
   '/setup',
-  loginLimiter,
+  ...loginGuards,
   h(async (req, res) => {
     const v = validate(req.body, [PASSWORD_RULE]);
     created(res, await authService.setup(v.masterPassword, req.ip));
@@ -35,7 +36,7 @@ router.post(
 
 router.post(
   '/login',
-  loginLimiter,
+  ...loginGuards,
   h(async (req, res) => {
     const v = validate(req.body, [PASSWORD_RULE]);
     const result = await authService.login(v.masterPassword, req.ip);
@@ -81,7 +82,7 @@ router.post(
 router.post(
   '/change-master',
   requireAuth,
-  masterLimiter,
+  ...masterGuards,
   h(async (req, res) => {
     const v = validate(req.body, [
       { field: 'currentPassword', required: true, trim: false, maxLength: 512 },

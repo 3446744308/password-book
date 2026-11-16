@@ -2,7 +2,7 @@
 
 | 项目 | 内容 |
 | --- | --- |
-| 文档版本 | v2.0 |
+| 文档版本 | v2.1 |
 | 编写日期 | 2026-11-16 |
 | API 版本 | `v1`（Base URL：`/api/v1`） |
 | 端点数量 | 30 |
@@ -127,14 +127,24 @@
 
 ### 1.6 限速与锁定
 
-| 范围 | 桶 | 默认额度 | 触发后 |
+**默认不启用 IP 限速**——正常情况下不会收到 `429`。暴力破解由「连续失败锁定」兜底。
+
+| 机制 | 默认状态 | 行为 |
+| --- | --- | --- |
+| 连续失败锁定 | **启用** | 主密码连续失败 `failedAttempts` 次（默认 5）→ `423 LOCKED_OUT`，冷却 `lockMinutesAfterBan`（默认 15 分钟）；锁定期间即使密码正确也直接返回 423 |
+| IP 限速 | **关闭** | 需 `RATE_LIMIT_ENABLED=true` 开启；开启后超限返回 `429 RATE_LIMITED` + `Retry-After` |
+
+开启限速后的额度（`RATE_LIMIT_ENABLED=true` 时生效）：
+
+| 覆盖范围 | 计数桶 | 默认额度 | 触发后 |
 | --- | --- | --- | --- |
 | `POST /auth/setup`、`POST /auth/login` | `login`（按 IP） | 5 次 / 5 分钟，**两者共用同一计数桶** | `429 RATE_LIMITED` + `Retry-After` |
 | `POST /auth/change-master` | `master`（按 IP） | 5 次 / 5 分钟（独立桶） | 同上 |
 
-- 可通过 `RATE_LOGIN_WINDOW_MS` / `RATE_LOGIN_MAX` 调整；计数为**进程内内存**，重启即清零。
-- 限速（429）与账户锁定（423）是两套机制：前者按 IP 频次，后者按主密码错误次数。
-  默认配置下「5 次失败」会先于限速触发 423。
+- 窗口与额度由 `RATE_LOGIN_WINDOW_MS` / `RATE_LOGIN_MAX` 控制；计数为**进程内内存**，重启即清零。
+- `423` 与 `429` 是两套独立机制：前者按主密码错误次数，后者按 IP 频次。
+- 为什么默认关闭：频繁重试主密码时先撞 429 会挡在"失败锁定"前面，体验很差；
+  而单机个人使用时按 IP 限速的实际防护价值有限。**对外网开放时建议开启。**
 
 ### 1.7 CORS
 
@@ -157,8 +167,14 @@ Referrer-Policy: no-referrer
 
 ### 2.1 `POST /auth/setup` — 初始化主密码
 
-> **鉴权**：无。**限速**：与登录共用桶（默认 5 次 / 5 分钟 / IP）。
-> 仅当系统未初始化时可用；成功后**同时写入 7 个内置分类**（见 [设计文档 4.3](./01-开发设计文档.md#43-数据字典)）。
+> **鉴权**：无。**限速**：默认关闭（见 §1.6）。
+> 仅当 `data/master.json` 不存在时可用；成功后**同时写入 7 个内置分类**
+> （见 [设计文档 4.3](./01-开发设计文档.md#43-数据字典)）。
+>
+> **"是否已初始化"以磁盘为准**：如果把 `data/` 目录整体删掉（服务仍在运行也算），
+> 本端点会重新初始化并补齐目录结构，不会因为内存里还留着旧状态而报 409。
+> 重新初始化会**轮换 JWT 签名密钥**，此前签发的访问令牌与刷新 Cookie 全部失效——
+> 避免清空重建后旧会话不经新主密码就进入新库。
 
 **请求体**
 
@@ -177,13 +193,14 @@ Referrer-Policy: no-referrer
 { "data": { "initialized": true, "defaultCategoryId": "_default" } }
 ```
 
-**错误**：`400 VALIDATION_ERROR`（长度不足/缺字母数字/为空）、`409 ALREADY_INITIALIZED`、`429 RATE_LIMITED`
+**错误**：`400 VALIDATION_ERROR`（长度不足/缺字母数字/为空）、`409 ALREADY_INITIALIZED`
+（磁盘上已有 `master.json`）、`429 RATE_LIMITED`（仅启用限速时）
 
 ---
 
 ### 2.2 `POST /auth/login` — 主密码登录/解锁
 
-> **鉴权**：无。**限速**：与 setup 共用桶（默认 5 次 / 5 分钟 / IP）。
+> **鉴权**：无。**限速**：默认关闭（与 setup 共用桶，仅启用时限流）。
 
 **请求体**
 
@@ -224,7 +241,7 @@ Set-Cookie: refreshToken=<...>; HttpOnly; SameSite=Strict; Path=/api/v1/auth; Ma
 | 400 | `VALIDATION_ERROR` | 主密码为空，或系统尚未初始化（`message` 为"系统尚未初始化"） |
 | 401 | `AUTH_INVALID_CREDENTIALS` | 主密码错误 |
 | 423 | `LOCKED_OUT` | 失败次数超限锁定中（`details[0].field = "lockedUntil"`） |
-| 429 | `RATE_LIMITED` | 触发限速，带 `Retry-After` |
+| 429 | `RATE_LIMITED` | 触发限速，带 `Retry-After`（**仅启用限速时出现**，默认不会返回） |
 
 ---
 
@@ -281,7 +298,7 @@ Set-Cookie: refreshToken=<...>; HttpOnly; SameSite=Strict; Path=/api/v1/auth; Ma
 
 ### 2.6 `POST /auth/change-master` — 更换主密码
 
-> **鉴权**：Bearer。**限速**：独立桶（默认 5 次 / 5 分钟 / IP）。
+> **鉴权**：Bearer。**限速**：默认关闭（启用时为独立桶）。
 
 **请求体**
 
@@ -299,7 +316,7 @@ Set-Cookie: refreshToken=<...>; HttpOnly; SameSite=Strict; Path=/api/v1/auth; Ma
 | `reloginRequired` | boolean | 恒为 `true`——所有已签发令牌失效 |
 
 **错误**：`400 VALIDATION_ERROR`、`401 AUTH_INVALID_CREDENTIALS`（旧密码错）、
-`401 TOKEN_*`、`429 RATE_LIMITED`
+`401 TOKEN_*`、`429 RATE_LIMITED`（仅启用限速时）
 
 > 成功后服务端会清除刷新令牌 Cookie；客户端应丢弃本地令牌并跳转登录页。
 
@@ -942,7 +959,7 @@ Set-Cookie: refreshToken=<...>; HttpOnly; SameSite=Strict; Path=/api/v1/auth; Ma
 ### 7.1 错误码
 
 > 通用规则：`401` 认证类；`403` 权限类；`404` 不存在；`409` 冲突；`423` 锁定；
-> `429` 限速；`5xx` 服务端。`code` 一经发布**不得改变含义**，只增不改。
+> `429` 限速（默认关闭，见 §1.6）；`5xx` 服务端。`code` 一经发布**不得改变含义**，只增不改。
 
 | HTTP | code | 含义 | 典型触发端点 |
 | --- | --- | --- | --- |
@@ -957,7 +974,7 @@ Set-Cookie: refreshToken=<...>; HttpOnly; SameSite=Strict; Path=/api/v1/auth; Ma
 | 409 | `CONFLICT` | 同名分类已存在 | `POST/PUT /categories` |
 | 409 | `NO_PASSWORD` | 该条目没有密码可读 | `GET /entries/:id/reveal` |
 | 423 | `LOCKED_OUT` | 主密码尝试超限，账户锁定中 | `auth/*` |
-| 429 | `RATE_LIMITED` | 触发限速（响应头带 `Retry-After`） | `auth/*` |
+| 429 | `RATE_LIMITED` | 触发限速（响应头带 `Retry-After`）；**默认关闭**，仅 `RATE_LIMIT_ENABLED=true` 时可能出现 | `auth/*` |
 | 500 | `INTERNAL_ERROR` | 未知服务端错误 / 解密失败（密文损坏或密钥不匹配） | 所有 |
 | 503 | `SERVICE_UNAVAILABLE` | 存储不可用、数据文件损坏、迁移缺失、备份失败 | 所有 |
 | 507 | `STORAGE_FULL` | 磁盘空间不足 | 备份等写操作 |
@@ -1193,14 +1210,14 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST -H "Authorization: Bearer $TOKE
 
 ## 10. 端点总览（速查表）
 
-| # | 方法 | 路径 | 鉴权 | 限速 | 说明 |
+| # | 方法 | 路径 | 鉴权 | 限速¹ | 说明 |
 | --- | --- | --- | --- | --- | --- |
-| 1 | POST | `/api/v1/auth/setup` | ✗ | ✓ | 初始化主密码（同时写入内置分类） |
-| 2 | POST | `/api/v1/auth/login` | ✗ | ✓ | 登录（下发刷新 Cookie） |
+| 1 | POST | `/api/v1/auth/setup` | ✗ | 可配 | 初始化主密码（同时写入内置分类） |
+| 2 | POST | `/api/v1/auth/login` | ✗ | 可配 | 登录（下发刷新 Cookie） |
 | 3 | POST | `/api/v1/auth/refresh` | Cookie | ✗ | 刷新令牌（也用于冷启动恢复） |
 | 4 | GET | `/api/v1/auth/session` | ✓ | ✗ | 会话校验 |
 | 5 | POST | `/api/v1/auth/logout` | ✓ | ✗ | 退出/锁定（清 Cookie） |
-| 6 | POST | `/api/v1/auth/change-master` | ✓ | ✓ | 更换主密码 |
+| 6 | POST | `/api/v1/auth/change-master` | ✓ | 可配 | 更换主密码 |
 | 7 | GET | `/api/v1/categories` | ✓ | ✗ | 分类列表（含条目数） |
 | 8 | POST | `/api/v1/categories` | ✓ | ✗ | 创建分类 |
 | 9 | GET | `/api/v1/categories/:id` | ✓ | ✗ | 分类详情 |
@@ -1226,6 +1243,8 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST -H "Authorization: Bearer $TOKE
 | 29 | GET | `/api/v1/system/audit` | ✓ | ✗ | 审计日志 |
 | 30 | POST | `/api/v1/system/backup` | ✓ | ✗ | 触发备份 |
 
+> ¹ 「可配」表示默认**不限流**，仅当 `RATE_LIMIT_ENABLED=true` 时按 §1.6 的额度限流。
+
 ---
 
 ## 11. 版本与兼容策略
@@ -1247,4 +1266,5 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST -H "Authorization: Bearer $TOKE
 | v1.0 | 2026-11-16 | 首次发布：29 个端点、信封规范、错误码总表、多端接入指引 | — |
 | v1.1 | 2026-11-16 | 实现校对，无破坏性变更：① §1.3/§2.2/§6.4 明确 `lockMinutes` 即访问令牌的实际 TTL（`expiresIn = lockMinutes × 60`），改配置只影响新签发的令牌；② §4.4 修正 `reveal` 的错误码——无密码应为 `409 NO_PASSWORD`（原写 `CONFLICT`），并删除实现中并不存在的 `423 LOCKED_OUT`；③ §6.2 补上实现已返回但文档缺失的 `failedAttempts` 字段；④ 补充 `Secure` Cookie 仅 HTTPS 下发的说明 | — |
 | v1.2 | 2026-11-16 | 新增端点，无破坏性变更：① 新增 §6.7 `GET /system/presets`（内置分类模板与常用标签候选），端点总数 29 → 30；② §2.1 补充说明初始化会写入内置分类，`GET /categories` 的初始内容因此从 1 个变为 8 个 | — |
+| v2.1 | 2026-11-16 | 限速默认关闭 + 重新初始化语义：① §1.6 重写——IP 限速默认关闭（不返回 429），暴力破解由连续失败锁定兜底，需要时用 `RATE_LIMIT_ENABLED=true` 开启；② §2.1 明确"是否已初始化以磁盘为准"：删掉 `data/` 后可重新初始化，且会轮换 JWT 密钥使旧令牌全部失效；③ §2.2/§2.6/§7/§10 的 429 说明同步为"仅启用限速时出现" | — |
 | v2.0 | 2026-11-16 | **全文重写，端点与行为均无变化**：① 每个端点补齐「鉴权、限速、请求参数表、响应字段表、示例、错误」六要素；② 新增 §9 数据字典（11 个对象逐字段说明），统一由 §1.5 声明类型约定（时间/ID/布尔/可空/密文）；③ 新增 §1.6 限速与锁定总表、§1.7 CORS 与安全响应头、§7.2 审计事件与 `detail` 格式对照表；④ §4.5 明确 `PUT` 与 `PATCH` 共用合并逻辑（省略字段保持原值）而非字面意义的全量替换，并标注为待定事项；⑤ §1.3 与 §8.1 补充「页面刷新用 `/auth/refresh` 冷启动恢复会话」以及「锁定会清 Cookie」的语义 | — |

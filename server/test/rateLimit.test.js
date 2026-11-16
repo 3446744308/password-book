@@ -9,9 +9,10 @@ let srv;
 let base;
 
 beforeAll(async () => {
+  // 限速默认关闭（docs/03 §1.6），本文件专门验证限速行为，故显式开启。
   // 额度设为 7：让“失败计数→锁定(423)”先于“限速(429)”出现，便于分别断言。
   // 生产默认为 5（docs/03 §2.2），两者交互见 docs/01 §6.1。
-  env = await createTestEnv({ rateLoginMax: 7 });
+  env = await createTestEnv({ rateLoginMax: 7, rateLimitEnabled: true });
   ({ base, server: srv } = await env.start());
 });
 afterAll(async () => {

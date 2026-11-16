@@ -62,6 +62,12 @@ export const config = {
     windowMs: int(process.env.RATE_LOGIN_WINDOW_MS, 5 * 60 * 1000),
     max: int(process.env.RATE_LOGIN_MAX, 5),
   },
+  /**
+   * 敏感端点（setup / login / change-master）的限速开关，**默认关闭**。
+   * 关闭后暴力破解仍由「连续失败锁定」（failedAttempts + lockMinutesAfterBan）兜底；
+   * 需要额外的按 IP 频率限制时设 RATE_LIMIT_ENABLED=true（见 docs/03 §1.6）。
+   */
+  rateLimitEnabled: bool(process.env.RATE_LIMIT_ENABLED),
   logLevel: process.env.LOG_LEVEL || 'info',
   /** 结构化日志落盘到 <DATA_DIR>/logs/app-YYYYMMDD.log（docs/02 §11.3）；测试或只读介质可关闭 */
   logToFile: process.env.LOG_TO_FILE !== 'false',

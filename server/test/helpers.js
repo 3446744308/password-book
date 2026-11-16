@@ -14,6 +14,8 @@ export async function createTestEnv(overrides = {}) {
   process.env.AUTH_MODE = overrides.authMode ?? 'dev';
   process.env.LOG_LEVEL = 'error';
   process.env.RATE_LOGIN_MAX = String(overrides.rateLoginMax ?? 1000);
+  // 限速默认关闭（见 docs/03 §1.6）；需要验证限速的用例显式打开
+  process.env.RATE_LIMIT_ENABLED = overrides.rateLimitEnabled ? 'true' : 'false';
   process.env.CORS_ORIGINS = 'http://localhost:5173';
 
   const { default: app } = await import('../src/app.js');
