@@ -12,7 +12,8 @@
     "dev": "node --watch src/server.js",
     "test": "vitest run",
     "lint": "eslint .",
-    "backup": "node ../scripts/backup.js"
+    "backup": "node ../scripts/backup.js",
+    "scan": "node ../scripts/scan-plaintext.js"
   },
   "dependencies": {
     "express": "^4.21.2"

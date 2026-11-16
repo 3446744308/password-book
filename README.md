@@ -85,6 +85,16 @@ npm --prefix server run backup   # 归档到 data/backups/<YYYYMMDD-HHmmss>/
 
 也可以在「系统设置 → 数据备份」里一键触发。
 
+**合规自检**：随时可以扫描整个数据目录，确认没有明文密码字段落盘：
+
+```bash
+npm --prefix server run scan          # 人类可读报告；有问题时退出码 1
+node scripts/scan-plaintext.js --json # 机器可读
+```
+
+它会递归检查所有 JSON/JSONL：出现 `password` / `notes` 这类明文字段、`passwordEnc` 不是
+`v1:iv:tag:ct` 形态、或文件本身损坏，都会精确报出文件与 JSON 路径。
+
 **恢复**：停服 → 用备份目录内容整体覆盖 `data/` → 启动。注意 `jwt.secret` 一并恢复，否则旧令牌全失效（需重新解锁）。
 
 > `data/` 里没有明文密码，但**必须和 `master.json` 一起备份**，两者分开保存等于两把钥匙分开放，请自行权衡保管方式。
@@ -118,6 +128,7 @@ npm --prefix server run backup   # 归档到 data/backups/<YYYYMMDD-HHmmss>/
 | `server/` | `npm test` | 后端 82 个接口/单元用例 |
 | `server/` | `npm run lint` | ESLint |
 | `server/` | `npm run backup` | 手动备份 `data/` |
+| `server/` | `npm run scan` | 明文扫描：断言 `data/` 无明文密码字段 |
 | `web/` | `npm run dev` | Vite 开发服务器 |
 | `web/` | `npm run build` | 类型检查 + 生产构建 |
 | `web/` | `npm test` | 前端纯逻辑单元测试（16 个用例） |
