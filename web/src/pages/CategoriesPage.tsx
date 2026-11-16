@@ -180,7 +180,13 @@ export default function CategoriesPage() {
             onConfirm={() => askDelete(record)}
             disabled={Boolean(record.protected)}
           >
-            <Button size="small" type="text" danger disabled={Boolean(record.protected)} icon={<DeleteOutlined />} />
+            <Button
+              size="small"
+              type="text"
+              danger
+              disabled={Boolean(record.protected)}
+              icon={<DeleteOutlined />}
+            />
           </Popconfirm>
         </Space>
       ),
@@ -209,7 +215,12 @@ export default function CategoriesPage() {
       )}
 
       <Card title={editingId ? `编辑分类：${editing?.name ?? ''}` : '新建分类'}>
-        <Form form={form} layout="inline" onFinish={onFinish} style={{ rowGap: 12, flexWrap: 'wrap' }}>
+        <Form
+          form={form}
+          layout="inline"
+          onFinish={onFinish}
+          style={{ rowGap: 12, flexWrap: 'wrap' }}
+        >
           <Form.Item
             name="name"
             label="名称"
@@ -227,12 +238,15 @@ export default function CategoriesPage() {
             <InputNumber min={0} max={99999} style={{ width: 120 }} placeholder="999" />
           </Form.Item>
           <Space>
-            <Button type="primary" htmlType="submit" loading={saving} icon={editingId ? <SaveOutlined /> : <FolderAddOutlined />}>
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={saving}
+              icon={editingId ? <SaveOutlined /> : <FolderAddOutlined />}
+            >
               {editingId ? '保存修改' : '创建分类'}
             </Button>
-            {editingId && (
-              <Button onClick={resetForm}>取消编辑</Button>
-            )}
+            {editingId && <Button onClick={resetForm}>取消编辑</Button>}
           </Space>
         </Form>
       </Card>
@@ -246,9 +260,7 @@ export default function CategoriesPage() {
           size="middle"
           scroll={{ x: 720 }}
           locale={{
-            emptyText: (
-              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无分类" />
-            ),
+            emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无分类" />,
           }}
         />
       </Card>

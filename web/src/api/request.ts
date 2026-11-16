@@ -55,19 +55,26 @@ instance.interceptors.response.use(
     const apiError = toApiError(error);
 
     // 访问令牌过期 → 静默刷新一次并重放原请求
-    if (apiError.status === 401 && apiError.code === 'TOKEN_EXPIRED' && config && !config._retried) {
+    if (
+      apiError.status === 401 &&
+      apiError.code === 'TOKEN_EXPIRED' &&
+      config &&
+      !config._retried
+    ) {
       config._retried = true;
       refreshing = refreshing ?? refreshAccessToken();
       const newToken = await refreshing;
       refreshing = null;
       if (newToken) {
         const headers = config.headers as unknown as
-          | { set?: (k: string, v: string) => void }
-          | undefined;
+          { set?: (k: string, v: string) => void } | undefined;
         if (headers && typeof headers.set === 'function') {
           headers.set('Authorization', `Bearer ${newToken}`);
         } else {
-          config.headers = { ...(config.headers as Record<string, string>), Authorization: `Bearer ${newToken}` };
+          config.headers = {
+            ...(config.headers as Record<string, string>),
+            Authorization: `Bearer ${newToken}`,
+          };
         }
         return instance(config);
       }
@@ -89,7 +96,11 @@ export async function httpGet<T>(url: string, params?: Record<string, unknown>):
 }
 
 /** POST：返回信封 */
-export async function httpPost<T>(url: string, body?: unknown, config?: AxiosRequestConfig): Promise<T> {
+export async function httpPost<T>(
+  url: string,
+  body?: unknown,
+  config?: AxiosRequestConfig,
+): Promise<T> {
   const res = (await instance.post(url, body, config)) as unknown as { data: T };
   return res.data;
 }

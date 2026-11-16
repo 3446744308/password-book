@@ -171,7 +171,9 @@ export default function EntryModal({ open, entryId, defaultCategoryId, onClose, 
             label={
               <Space>
                 <span>密码</span>
-                {isEdit && hasExistingPassword && pwMode !== 'clear' && <Tag color="green">已设置</Tag>}
+                {isEdit && hasExistingPassword && pwMode !== 'clear' && (
+                  <Tag color="green">已设置</Tag>
+                )}
                 <TypographyHint text={passwordHint} />
               </Space>
             }
@@ -252,7 +254,12 @@ export default function EntryModal({ open, entryId, defaultCategoryId, onClose, 
             label="备注"
             rules={[{ max: 2000, message: '备注最多 2000 字符' }]}
           >
-            <Input.TextArea rows={3} maxLength={2000} showCount placeholder="安全提示、恢复邮箱等" />
+            <Input.TextArea
+              rows={3}
+              maxLength={2000}
+              showCount
+              placeholder="安全提示、恢复邮箱等"
+            />
           </Form.Item>
         </Form>
       </Modal>
@@ -272,7 +279,5 @@ export default function EntryModal({ open, entryId, defaultCategoryId, onClose, 
 }
 
 function TypographyHint({ text }: { text: string }) {
-  return (
-    <span style={{ color: 'rgba(0,0,0,0.45)', fontWeight: 400, fontSize: 12 }}>{text}</span>
-  );
+  return <span style={{ color: 'rgba(0,0,0,0.45)', fontWeight: 400, fontSize: 12 }}>{text}</span>;
 }

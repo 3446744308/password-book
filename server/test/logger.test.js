@@ -14,7 +14,9 @@ const LOG_FILE_RE = /^app-\d{8}\.log$/;
 /** 汇总当天全部日志文件内容（轮转后可能不止一个文件） */
 async function readAllLogs() {
   const names = (await fs.readdir(paths.logsDir)).filter((n) => LOG_FILE_RE.test(n));
-  const parts = await Promise.all(names.map((n) => fs.readFile(path.join(paths.logsDir, n), 'utf8')));
+  const parts = await Promise.all(
+    names.map((n) => fs.readFile(path.join(paths.logsDir, n), 'utf8')),
+  );
   return parts.join('');
 }
 

@@ -21,7 +21,9 @@ export async function acquireLock() {
     const raw = await fs.readFile(paths.lockFile, 'utf8');
     const info = JSON.parse(raw);
     if (info.pid && info.pid !== process.pid && pidAlive(info.pid)) {
-      throw new Error(`另一个密码本实例正在运行（pid=${info.pid}），请勿同时启动多个实例写同一 data 目录`);
+      throw new Error(
+        `另一个密码本实例正在运行（pid=${info.pid}），请勿同时启动多个实例写同一 data 目录`,
+      );
     }
     logger.warn('lock.stale', { pid: info.pid });
   } catch (err) {

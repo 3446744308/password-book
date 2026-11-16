@@ -102,7 +102,11 @@ export default function HistoryDrawer({ open, entryId, onClose, onRestored }: Pr
                       </div>
                     )}
                     <Space style={{ marginTop: 6 }}>
-                      <Button size="small" icon={<EyeOutlined />} onClick={() => handleView(v.version)}>
+                      <Button
+                        size="small"
+                        icon={<EyeOutlined />}
+                        onClick={() => handleView(v.version)}
+                      >
                         查看密码
                       </Button>
                       <Button

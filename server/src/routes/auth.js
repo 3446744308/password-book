@@ -10,9 +10,17 @@ import { config } from '../config.js';
 const router = Router();
 
 /** 登录/setup 限速：5 次 / 5 分钟 / IP（docs/03 §2.2） */
-const loginLimiter = rateLimit({ windowMs: config.loginRate.windowMs, max: config.loginRate.max, name: 'login' });
+const loginLimiter = rateLimit({
+  windowMs: config.loginRate.windowMs,
+  max: config.loginRate.max,
+  name: 'login',
+});
 /** 更换主密码限速（独立桶，避免与登录互相挤占） */
-const masterLimiter = rateLimit({ windowMs: config.loginRate.windowMs, max: config.loginRate.max, name: 'master' });
+const masterLimiter = rateLimit({
+  windowMs: config.loginRate.windowMs,
+  max: config.loginRate.max,
+  name: 'master',
+});
 
 const PASSWORD_RULE = { field: 'masterPassword', required: true, trim: false, maxLength: 512 };
 
@@ -62,7 +70,10 @@ router.post(
   requireAuth,
   h(async (req, res) => {
     await authService.logout(req.auth, req.ip);
-    res.append('Set-Cookie', 'refreshToken=; HttpOnly; SameSite=Strict; Path=/api/v1/auth; Max-Age=0');
+    res.append(
+      'Set-Cookie',
+      'refreshToken=; HttpOnly; SameSite=Strict; Path=/api/v1/auth; Max-Age=0',
+    );
     noContent(res);
   }),
 );
@@ -76,8 +87,16 @@ router.post(
       { field: 'currentPassword', required: true, trim: false, maxLength: 512 },
       { field: 'newPassword', required: true, trim: false, maxLength: 512 },
     ]);
-    const result = await authService.changeMaster(req.auth, v.currentPassword, v.newPassword, req.ip);
-    res.append('Set-Cookie', 'refreshToken=; HttpOnly; SameSite=Strict; Path=/api/v1/auth; Max-Age=0');
+    const result = await authService.changeMaster(
+      req.auth,
+      v.currentPassword,
+      v.newPassword,
+      req.ip,
+    );
+    res.append(
+      'Set-Cookie',
+      'refreshToken=; HttpOnly; SameSite=Strict; Path=/api/v1/auth; Max-Age=0',
+    );
     ok(res, result);
   }),
 );

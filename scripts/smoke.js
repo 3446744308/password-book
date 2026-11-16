@@ -76,12 +76,18 @@ async function main() {
 
   // 5. 无令牌被拒
   const noAuth = await call('/api/v1/entries');
-  check('无令牌 401 TOKEN_MISSING', noAuth.status === 401 && noAuth.body?.error?.code === 'TOKEN_MISSING');
+  check(
+    '无令牌 401 TOKEN_MISSING',
+    noAuth.status === 401 && noAuth.body?.error?.code === 'TOKEN_MISSING',
+  );
 
   // 6. 分类 CRUD
   const cats = await call('/api/v1/categories', { token });
   check('GET /categories 200', cats.status === 200 && Array.isArray(cats.body?.data));
-  check('默认分类存在', cats.body?.data?.some((c) => c.id === '_default'));
+  check(
+    '默认分类存在',
+    cats.body?.data?.some((c) => c.id === '_default'),
+  );
 
   const newCat = await call('/api/v1/categories', {
     method: 'POST',
@@ -111,10 +117,16 @@ async function main() {
   check('响应不含密文字段', !JSON.stringify(created.body).includes('passwordEnc'));
 
   const detail = await call(`/api/v1/entries/${entryId}`, { token });
-  check('GET /entries/:id 200 + notes 解密', detail.status === 200 && detail.body?.data?.notes === '备注内容');
+  check(
+    'GET /entries/:id 200 + notes 解密',
+    detail.status === 200 && detail.body?.data?.notes === '备注内容',
+  );
 
   const reveal = await call(`/api/v1/entries/${entryId}/reveal`, { token });
-  check('GET reveal 返回明文', reveal.status === 200 && reveal.body?.data?.password === 'Sup3rSecret!');
+  check(
+    'GET reveal 返回明文',
+    reveal.status === 200 && reveal.body?.data?.password === 'Sup3rSecret!',
+  );
 
   const list = await call(`/api/v1/entries?keyword=${encodeURIComponent('冒烟')}`, { token });
   check('GET /entries 搜索命中', list.status === 200 && list.body?.pagination?.total >= 1);
@@ -145,18 +157,25 @@ async function main() {
 
   // 8. 系统配置 / 审计 / 备份
   const cfg = await call('/api/v1/system/config', { token });
-  check('GET /system/config 200', cfg.status === 200 && typeof cfg.body?.data?.lockMinutes === 'number');
+  check(
+    'GET /system/config 200',
+    cfg.status === 200 && typeof cfg.body?.data?.lockMinutes === 'number',
+  );
 
   const audit = await call('/api/v1/system/audit?size=100', { token });
   const events = (audit.body?.data || []).map((e) => e.event);
   check(
     '审计含 LOGIN_OK / ENTRY_CREATE / ENTRY_REVEAL',
-    audit.status === 200 && ['LOGIN_OK', 'ENTRY_CREATE', 'ENTRY_REVEAL'].every((ev) => events.includes(ev)),
+    audit.status === 200 &&
+      ['LOGIN_OK', 'ENTRY_CREATE', 'ENTRY_REVEAL'].every((ev) => events.includes(ev)),
     events.slice(0, 8).join(','),
   );
 
   const backup = await call('/api/v1/system/backup', { method: 'POST', token });
-  check('POST /system/backup 201', backup.status === 201 && /^\d{8}-\d{6}$/.test(backup.body?.data?.backupId || ''));
+  check(
+    'POST /system/backup 201',
+    backup.status === 201 && /^\d{8}-\d{6}$/.test(backup.body?.data?.backupId || ''),
+  );
 
   // 9. 删除
   const del = await call(`/api/v1/entries/${entryId}`, { method: 'DELETE', token });
@@ -169,12 +188,17 @@ async function main() {
   const notFound = await call('/api/v1/entries/01JD8Z8G9QK3M2N7P5R6T8WXYZ', { token });
   check(
     '404 标准信封 {error:{code,message}}',
-    notFound.status === 404 && Boolean(notFound.body?.error?.code) && Boolean(notFound.body?.error?.message),
+    notFound.status === 404 &&
+      Boolean(notFound.body?.error?.code) &&
+      Boolean(notFound.body?.error?.message),
     JSON.stringify(notFound.body),
   );
 
   const badRoute = await call('/api/v1/nope', { token });
-  check('未知 /api 路由 404', badRoute.status === 404 && badRoute.body?.error?.code === 'NOT_FOUND');
+  check(
+    '未知 /api 路由 404',
+    badRoute.status === 404 && badRoute.body?.error?.code === 'NOT_FOUND',
+  );
 
   // 11. SPA 静态托管（仅生产模式下有 dist）
   const spa = await call('/');
@@ -184,7 +208,10 @@ async function main() {
     `status=${spa.status}`,
   );
   const spaDeep = await call('/settings');
-  check('深链 /settings 回退到 index.html', spaDeep.status === 200 && /<!doctype html>/i.test(spaDeep.raw));
+  check(
+    '深链 /settings 回退到 index.html',
+    spaDeep.status === 200 && /<!doctype html>/i.test(spaDeep.raw),
+  );
 
   // 12. 登出
   const logout = await call('/api/v1/auth/logout', { method: 'POST', token });

@@ -64,10 +64,16 @@ export async function patchEntry(id: string, patch: EntryPatchInput): Promise<En
   return res.data;
 }
 
-export async function setFavorite(id: string, favorite: boolean): Promise<{ id: string; favorite: boolean }> {
-  const res = await httpPatch<Envelope<{ id: string; favorite: boolean }>>(`/entries/${id}/favorite`, {
-    favorite,
-  });
+export async function setFavorite(
+  id: string,
+  favorite: boolean,
+): Promise<{ id: string; favorite: boolean }> {
+  const res = await httpPatch<Envelope<{ id: string; favorite: boolean }>>(
+    `/entries/${id}/favorite`,
+    {
+      favorite,
+    },
+  );
   return res.data;
 }
 
@@ -96,9 +102,8 @@ export async function restorePassword(
   id: string,
   version: number,
 ): Promise<{ id: string; restoredVersion: number; currentVersion: number; updatedAt: string }> {
-  const res = await httpPost<Envelope<{ id: string; restoredVersion: number; currentVersion: number; updatedAt: string }>>(
-    `/entries/${id}/restore-password`,
-    { version },
-  );
+  const res = await httpPost<
+    Envelope<{ id: string; restoredVersion: number; currentVersion: number; updatedAt: string }>
+  >(`/entries/${id}/restore-password`, { version });
   return res.data;
 }

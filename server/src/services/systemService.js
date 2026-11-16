@@ -53,7 +53,8 @@ export const systemService = {
       { field: 'minPasswordLength', type: 'int', min: 10, max: 32 },
       { field: 'historyKeep', type: 'int', min: 10, max: 500 },
     ]);
-    if (!Object.keys(v).length) throw errors.validation([{ field: '_', message: '没有可更新的字段' }]);
+    if (!Object.keys(v).length)
+      throw errors.validation([{ field: '_', message: '没有可更新的字段' }]);
     await repo.updateConfig(v);
     await repo.appendAudit('CONFIG_UPDATE', { ip, detail: Object.keys(v).join(',') });
     return pickConfig(await repo.readConfig());

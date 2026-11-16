@@ -128,7 +128,11 @@ export async function createCategory({ name, icon, sortOrder }) {
     doc.categories.push(cat);
     doc.updatedAt = nowIso();
     await writeJson(paths.categoriesFile, doc);
-    await writeJson(paths.entryFile(cat.id), { categoryId: cat.id, updatedAt: nowIso(), items: [] });
+    await writeJson(paths.entryFile(cat.id), {
+      categoryId: cat.id,
+      updatedAt: nowIso(),
+      items: [],
+    });
     return { ...cat, entryCount: 0 };
   });
 }
@@ -139,7 +143,8 @@ export async function updateCategory(id, patch) {
     const cat = doc.categories.find((c) => c.id === id);
     if (!cat) throw errors.notFound('分类不存在');
     if (patch.name !== undefined) {
-      if (cat.protected && patch.name !== cat.name) throw errors.protectedResource('默认分类不可改名');
+      if (cat.protected && patch.name !== cat.name)
+        throw errors.protectedResource('默认分类不可改名');
       if (doc.categories.some((c) => c.id !== id && c.name === patch.name)) {
         throw errors.conflict('同名分类已存在');
       }
@@ -165,10 +170,18 @@ export async function deleteCategory(id) {
 
     const srcFile = paths.entryFile(id);
     const src = await readJson(srcFile, null);
-    const moved = (src?.items || []).map((item) => ({ ...item, categoryId: '_default', updatedAt: nowIso() }));
+    const moved = (src?.items || []).map((item) => ({
+      ...item,
+      categoryId: '_default',
+      updatedAt: nowIso(),
+    }));
 
     const defFile = paths.entryFile('_default');
-    const def = (await readJson(defFile, null)) || { categoryId: '_default', updatedAt: nowIso(), items: [] };
+    const def = (await readJson(defFile, null)) || {
+      categoryId: '_default',
+      updatedAt: nowIso(),
+      items: [],
+    };
     def.items.push(...moved);
     def.updatedAt = nowIso();
     await writeJson(defFile, def);
@@ -198,7 +211,11 @@ export async function transferEntries(sourceCatId, targetCatId, entryIds) {
       ]);
     }
 
-    const tgt = (await readJson(tgtFile, null)) || { categoryId: targetCatId, updatedAt: nowIso(), items: [] };
+    const tgt = (await readJson(tgtFile, null)) || {
+      categoryId: targetCatId,
+      updatedAt: nowIso(),
+      items: [],
+    };
     const stamp = nowIso();
     for (const item of moving) {
       item.categoryId = targetCatId;
@@ -227,7 +244,13 @@ async function listEntryCatIds() {
 }
 
 export async function readEntryFile(catId) {
-  return (await readJson(paths.entryFile(catId), null)) || { categoryId: catId, updatedAt: null, items: [] };
+  return (
+    (await readJson(paths.entryFile(catId), null)) || {
+      categoryId: catId,
+      updatedAt: null,
+      items: [],
+    }
+  );
 }
 
 /** 列表 DTO：不含任何密文（docs/03 §4.1） */
@@ -262,14 +285,22 @@ export async function listEntries(query = {}) {
     const kw = String(query.keyword).toLowerCase();
     all = all.filter(
       (i) =>
-        String(i.title || '').toLowerCase().includes(kw) ||
-        String(i.username || '').toLowerCase().includes(kw) ||
-        String(i.url || '').toLowerCase().includes(kw) ||
+        String(i.title || '')
+          .toLowerCase()
+          .includes(kw) ||
+        String(i.username || '')
+          .toLowerCase()
+          .includes(kw) ||
+        String(i.url || '')
+          .toLowerCase()
+          .includes(kw) ||
         (i.tags || []).some((t) => String(t).toLowerCase().includes(kw)),
     );
   }
 
-  const sortKey = ['updatedAt', 'createdAt', 'title'].includes(query.sort) ? query.sort : 'updatedAt';
+  const sortKey = ['updatedAt', 'createdAt', 'title'].includes(query.sort)
+    ? query.sort
+    : 'updatedAt';
   const dir = query.order === 'asc' ? 1 : -1;
   all.sort((a, b) => {
     const av = a[sortKey] ?? '';
@@ -300,7 +331,11 @@ export async function findEntry(id) {
 export async function insertEntry(entry) {
   return withLock(async () => {
     const file = paths.entryFile(entry.categoryId);
-    const data = (await readJson(file, null)) || { categoryId: entry.categoryId, updatedAt: null, items: [] };
+    const data = (await readJson(file, null)) || {
+      categoryId: entry.categoryId,
+      updatedAt: null,
+      items: [],
+    };
     data.items.push(entry);
     data.updatedAt = nowIso();
     await writeJson(file, data);
@@ -457,7 +492,12 @@ async function countAuditLines() {
 export async function appendAudit(event, { ip, detail } = {}) {
   try {
     if (auditLineCount < 0) auditLineCount = await countAuditLines();
-    await appendLine(paths.auditFile, { ts: nowIso(), event, ip: ip || null, detail: detail || null });
+    await appendLine(paths.auditFile, {
+      ts: nowIso(),
+      event,
+      ip: ip || null,
+      detail: detail || null,
+    });
     auditLineCount++;
     if (auditLineCount > AUDIT_KEEP) {
       const text = await fs.readFile(paths.auditFile, 'utf8');

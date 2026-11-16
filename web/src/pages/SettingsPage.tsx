@@ -391,7 +391,13 @@ function AuditTab() {
       ),
     },
     { title: 'IP', dataIndex: 'ip', key: 'ip', width: 130, render: (v: string | null) => v || '-' },
-    { title: '详情', dataIndex: 'detail', key: 'detail', ellipsis: true, render: (v: string | null) => v || '-' },
+    {
+      title: '详情',
+      dataIndex: 'detail',
+      key: 'detail',
+      ellipsis: true,
+      render: (v: string | null) => v || '-',
+    },
   ];
 
   return (
@@ -408,9 +414,7 @@ function AuditTab() {
               void load(1, 50, value);
             }}
           />
-          <Button onClick={() => void load(pagination.page, pagination.size, event)}>
-            刷新
-          </Button>
+          <Button onClick={() => void load(pagination.page, pagination.size, event)}>刷新</Button>
         </Space>
       }
     >
@@ -480,7 +484,8 @@ function AboutTab() {
               )}
             </Descriptions.Item>
             <Descriptions.Item label="运行时长">
-              {Math.floor(info.uptimeSeconds / 3600)} 小时 {Math.floor((info.uptimeSeconds % 3600) / 60)} 分钟
+              {Math.floor(info.uptimeSeconds / 3600)} 小时{' '}
+              {Math.floor((info.uptimeSeconds % 3600) / 60)} 分钟
             </Descriptions.Item>
           </Descriptions>
         )}

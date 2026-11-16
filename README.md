@@ -43,7 +43,7 @@ NODE_ENV=production npm --prefix server start
 │  │  ├─ storage/      data/ 的唯一读写出口（原子写 + 写队列 + 迁移）
 │  │  ├─ crypto/       加解密的唯一入口（KDF / AES-GCM）
 │  │  └─ utils/        错误码、校验、JWT、ULID
-│  └─ test/            接口与单元测试（Vitest）
+│  └─ test/            接口与单元测试（Vitest，6 文件 92 用例）
 ├─ web/           前端：React + Ant Design
 │  ├─ src/
 │  │  ├─ api/          Axios 封装（拦截器统一带 token、解包信封、静默续期）
@@ -51,9 +51,13 @@ NODE_ENV=production npm --prefix server start
 │  │  ├─ pages/        解锁 / 列表 / 分类 / 设置
 │  │  ├─ stores/       Zustand（令牌只存内存）
 │  │  └─ utils/        剪贴板、格式化、错误文案、密码生成算法
-│  └─ test/            纯逻辑单元测试（Node 内置 test runner）
-├─ scripts/       backup.js（手动备份）、smoke.js（对运行中的服务做全链路校验）
+│  ├─ test/            单元 + 组件测试（Vitest + jsdom + Testing Library）
+│  ├─ vitest.config.ts
+│  └─ tsconfig.test.json   测试文件的类型检查配置
+├─ scripts/       backup.js（备份）、scan-plaintext.js（明文扫描）、smoke.js（全链路校验）
 ├─ data/          运行时数据（git 忽略，首次启动自动创建）
+├─ .prettierrc.json / .prettierignore   两端共用的格式化规则
+├─ .gitattributes  换行符固定 LF
 └─ .gitignore
 ```
 
@@ -125,28 +129,29 @@ node scripts/scan-plaintext.js --json # 机器可读
 | 位置 | 命令 | 说明 |
 | --- | --- | --- |
 | `server/` | `npm run dev` | 启动后端（`--watch` 热重启） |
-| `server/` | `npm test` | 后端 82 个接口/单元用例 |
+| `server/` | `npm test` | 后端 92 个接口/单元用例 |
 | `server/` | `npm run lint` | ESLint |
+| `server/` | `npm run format` / `format:check` | Prettier 格式化 / 只校验 |
 | `server/` | `npm run backup` | 手动备份 `data/` |
 | `server/` | `npm run scan` | 明文扫描：断言 `data/` 无明文密码字段 |
 | `web/` | `npm run dev` | Vite 开发服务器 |
 | `web/` | `npm run build` | 类型检查 + 生产构建 |
-| `web/` | `npm test` | 前端纯逻辑单元测试（16 个用例） |
+| `web/` | `npm test` | 前端 28 个单元 + 组件用例 |
+| `web/` | `npm run typecheck` | 类型检查（含测试文件） |
 | `web/` | `npm run lint` | ESLint |
-| 仓库根 | `node scripts/smoke.js` | 对运行中的服务跑全链路冒烟（40+ 断言） |
+| `web/` | `npm run format` / `format:check` | Prettier 格式化 / 只校验 |
+| 仓库根 | `node scripts/smoke.js` | 对运行中的服务跑全链路冒烟（32 项断言） |
 
 ## 测试
 
-- **后端**：Vitest + SuperTest 风格的真实 HTTP 请求，每个用例自建临时 `data/` 目录，覆盖加解密（含篡改/错误密钥）、原子写与并发写队列、登录限速与锁定、29 个端点的正常/参数非法/未认证/不存在四类路径，并抽查落盘形态不含明文。
-- **前端**：目前是**纯逻辑单元测试**，用 Node 内置 test runner + 类型剥离直接导入 `.ts` 源文件，零额外依赖，覆盖密码生成算法（含拒绝采样、熵值分级）、时间/体积格式化、错误文案与表单回填。
+- **后端（92 个用例）**：Vitest + 真实 HTTP 请求。覆盖加解密（含密文篡改、错误密钥）、KDF/verifier、JWT 篡改与过期、ULID；原子写与 50 路并发写队列；登录限速与 5 次失败锁定；29 个端点的正常/参数非法/未认证/不存在四类路径；会话生命周期（登出/刷新/换主密码后旧令牌失效）；日志落盘与脱敏；明文扫描器自身的 10 个用例。每个用例自建临时 `data/` 目录并在结束时删除。
+- **前端（28 个用例）**：Vitest + jsdom + `@testing-library/react`。
+  - 纯逻辑：密码生成（拒绝采样无取模偏差、排除易混淆字符、熵值分级）、时间/体积格式化、错误文案与表单回填。
+  - 组件：`SecretField`（默认掩码、点击才 reveal、失焦/切后台立即掩码、30 秒自动掩码、复制路径）、`PasswordGenerator`（默认 20 位、回传、熵值标签）、`AutoLock`（空闲超时锁定、未超时不锁、未登录不动作）。
+  - 测试文件也参与类型检查：`web/tsconfig.test.json`，`npm run typecheck` 一并跑。
 
-> 组件级测试（`SecretField`、`PasswordGenerator`）需要 `jsdom` + `@testing-library/react`，当前开发环境无法访问 npm registry 故未安装。能联网后执行：
->
-> ```bash
-> npm --prefix web install -D vitest jsdom @testing-library/react @testing-library/jest-dom
-> ```
->
-> 再把 `web/test/*.test.mjs` 迁移到 Vitest 即可（`web/package.json` 的 `test` 脚本改成 `vitest run`）。
+> 提示：antd 的 `Button` 会给两个汉字之间自动插入空格（「取 消」），组件测试里断言按钮文案时用
+> `getByRole('button', { name: /取\s*消/ })` 这类容错匹配，不要用精确文本。
 
 ## 文档
 

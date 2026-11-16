@@ -31,7 +31,8 @@ export function verifyJwt(token, secret) {
   } catch {
     throw errors.tokenInvalid();
   }
-  if (typeof payload.exp !== 'number' || payload.exp * 1000 <= Date.now()) throw errors.tokenExpired();
+  if (typeof payload.exp !== 'number' || payload.exp * 1000 <= Date.now())
+    throw errors.tokenExpired();
   return payload;
 }
 

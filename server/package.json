@@ -12,6 +12,8 @@
     "dev": "node --watch src/server.js",
     "test": "vitest run",
     "lint": "eslint .",
+    "format": "prettier --write . --ignore-path ../.prettierignore --config ../.prettierrc.json",
+    "format:check": "prettier --check . --ignore-path ../.prettierignore --config ../.prettierrc.json",
     "backup": "node ../scripts/backup.js",
     "scan": "node ../scripts/scan-plaintext.js"
   },
@@ -22,6 +24,7 @@
     "@eslint/js": "^9.17.0",
     "eslint": "^9.17.0",
     "globals": "^15.14.0",
+    "prettier": "^3.10.1",
     "vitest": "^3.0.0"
   }
 }

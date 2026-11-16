@@ -44,13 +44,19 @@ describe('1. 系统初始化与认证', () => {
   });
 
   it('未初始化时登录 → 400', async () => {
-    const res = await api(base, '/api/v1/auth/login', { method: 'POST', body: { masterPassword: MASTER } });
+    const res = await api(base, '/api/v1/auth/login', {
+      method: 'POST',
+      body: { masterPassword: MASTER },
+    });
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
 
   it('弱主密码初始化被拒 → 400（长度不足 / 缺字母数字）', async () => {
-    const short = await api(base, '/api/v1/auth/setup', { method: 'POST', body: { masterPassword: 'abc123' } });
+    const short = await api(base, '/api/v1/auth/setup', {
+      method: 'POST',
+      body: { masterPassword: 'abc123' },
+    });
     expect(short.status).toBe(400);
     const noDigit = await api(base, '/api/v1/auth/setup', {
       method: 'POST',
@@ -60,13 +66,19 @@ describe('1. 系统初始化与认证', () => {
   });
 
   it('合法主密码初始化 → 201', async () => {
-    const res = await api(base, '/api/v1/auth/setup', { method: 'POST', body: { masterPassword: MASTER } });
+    const res = await api(base, '/api/v1/auth/setup', {
+      method: 'POST',
+      body: { masterPassword: MASTER },
+    });
     expect(res.status).toBe(201);
     expect(res.body.data).toEqual({ initialized: true, defaultCategoryId: '_default' });
   });
 
   it('重复初始化 → 409 ALREADY_INITIALIZED', async () => {
-    const res = await api(base, '/api/v1/auth/setup', { method: 'POST', body: { masterPassword: MASTER } });
+    const res = await api(base, '/api/v1/auth/setup', {
+      method: 'POST',
+      body: { masterPassword: MASTER },
+    });
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe('ALREADY_INITIALIZED');
   });
@@ -81,7 +93,10 @@ describe('1. 系统初始化与认证', () => {
   });
 
   it('正确主密码登录 → 200 令牌 + HttpOnly 刷新 Cookie', async () => {
-    const res = await api(base, '/api/v1/auth/login', { method: 'POST', body: { masterPassword: MASTER } });
+    const res = await api(base, '/api/v1/auth/login', {
+      method: 'POST',
+      body: { masterPassword: MASTER },
+    });
     expect(res.status).toBe(200);
     expect(res.body.data.accessToken).toBeTruthy();
     expect(res.body.data.tokenType).toBe('Bearer');
@@ -133,7 +148,11 @@ describe('2. 分类管理', () => {
   });
 
   it('同名分类 → 409 CONFLICT', async () => {
-    const res = await api(base, '/api/v1/categories', { method: 'POST', token, body: { name: '工作' } });
+    const res = await api(base, '/api/v1/categories', {
+      method: 'POST',
+      token,
+      body: { name: '工作' },
+    });
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe('CONFLICT');
   });
@@ -189,7 +208,11 @@ describe('3. 条目 CRUD 与密码查看', () => {
   });
 
   it('校验失败（缺标题/非法网址）→ 400 + 字段级 details', async () => {
-    const noTitle = await api(base, '/api/v1/entries', { method: 'POST', token, body: { username: 'x' } });
+    const noTitle = await api(base, '/api/v1/entries', {
+      method: 'POST',
+      token,
+      body: { username: 'x' },
+    });
     expect(noTitle.status).toBe(400);
     expect(noTitle.body.error.details.some((d) => d.field === 'title')).toBe(true);
 
@@ -299,7 +322,12 @@ describe('4. 收藏 / 更新 / 密码历史', () => {
     const res = await api(base, `/api/v1/entries/${entryId}`, {
       method: 'PUT',
       token,
-      body: { title: '公司邮箱(主)', username: 'me@company.com', password: newPw, changeNote: '季度换密' },
+      body: {
+        title: '公司邮箱(主)',
+        username: 'me@company.com',
+        password: newPw,
+        changeNote: '季度换密',
+      },
     });
     expect(res.status).toBe(200);
     expect(res.body.data.passwordVersion).toBe(2);
@@ -437,7 +465,11 @@ describe('6. 系统配置 / 审计 / 备份', () => {
     expect(okRes.status).toBe(200);
     expect(okRes.body.data.lockMinutes).toBe(15);
 
-    const bad = await api(base, '/api/v1/system/config', { method: 'PUT', token, body: { lockMinutes: 0 } });
+    const bad = await api(base, '/api/v1/system/config', {
+      method: 'PUT',
+      token,
+      body: { lockMinutes: 0 },
+    });
     expect(bad.status).toBe(400);
     const empty = await api(base, '/api/v1/system/config', { method: 'PUT', token, body: {} });
     expect(empty.status).toBe(400);
@@ -445,7 +477,10 @@ describe('6. 系统配置 / 审计 / 备份', () => {
 
   it('lockMinutes 决定访问令牌的实际有效期（不是仅展示值）', async () => {
     // 上文已把 lockMinutes 改为 15 分钟
-    const login = await api(base, '/api/v1/auth/login', { method: 'POST', body: { masterPassword: MASTER } });
+    const login = await api(base, '/api/v1/auth/login', {
+      method: 'POST',
+      body: { masterPassword: MASTER },
+    });
     expect(login.status).toBe(200);
     expect(login.body.data.expiresIn).toBe(15 * 60);
 
@@ -489,7 +524,10 @@ describe('7. 会话生命周期（登出 / 刷新 / 更换主密码）', () => {
   let sessionToken;
 
   it('登出 → 204，之后令牌失效', async () => {
-    const login = await api(base, '/api/v1/auth/login', { method: 'POST', body: { masterPassword: MASTER } });
+    const login = await api(base, '/api/v1/auth/login', {
+      method: 'POST',
+      body: { masterPassword: MASTER },
+    });
     sessionToken = login.body.data.accessToken;
     const out = await api(base, '/api/v1/auth/logout', { method: 'POST', token: sessionToken });
     expect(out.status).toBe(204);
@@ -505,7 +543,10 @@ describe('7. 会话生命周期（登出 / 刷新 / 更换主密码）', () => {
       headers: {},
     });
     const cookie = (login.headers.get('set-cookie') || '').split(';')[0];
-    const res = await api(base, '/api/v1/auth/refresh', { method: 'POST', headers: { Cookie: cookie } });
+    const res = await api(base, '/api/v1/auth/refresh', {
+      method: 'POST',
+      headers: { Cookie: cookie },
+    });
     expect(res.status).toBe(200);
     expect(res.body.data.accessToken).toBeTruthy();
     expect(res.body.data.accessToken).not.toBe(login.body.data.accessToken);
@@ -545,7 +586,10 @@ describe('7. 会话生命周期（登出 / 刷新 / 更换主密码）', () => {
     expect(stale.status).toBe(401);
 
     // 旧主密码失效、新主密码可用
-    const oldPw = await api(base, '/api/v1/auth/login', { method: 'POST', body: { masterPassword: MASTER } });
+    const oldPw = await api(base, '/api/v1/auth/login', {
+      method: 'POST',
+      body: { masterPassword: MASTER },
+    });
     expect(oldPw.status).toBe(401);
     const newPw = await api(base, '/api/v1/auth/login', {
       method: 'POST',
@@ -571,7 +615,10 @@ describe('8. 锁定状态（直接写 master.json 模拟）', () => {
     const lockedUntil = new Date(Date.now() + 10 * 60 * 1000).toISOString();
     await writeJson(paths.masterFile, { ...master, failedAttempts: 5, lockedUntil });
 
-    const res = await api(base, '/api/v1/auth/login', { method: 'POST', body: { masterPassword: NEW_MASTER } });
+    const res = await api(base, '/api/v1/auth/login', {
+      method: 'POST',
+      body: { masterPassword: NEW_MASTER },
+    });
     expect(res.status).toBe(423);
     expect(res.body.error.code).toBe('LOCKED_OUT');
     expect(res.body.error.details[0].field).toBe('lockedUntil');
@@ -584,7 +631,10 @@ describe('8. 锁定状态（直接写 master.json 模拟）', () => {
     // 解除锁定
     const cleared = await readJson(paths.masterFile, null);
     await writeJson(paths.masterFile, { ...cleared, failedAttempts: 0, lockedUntil: null });
-    const okRes = await api(base, '/api/v1/auth/login', { method: 'POST', body: { masterPassword: NEW_MASTER } });
+    const okRes = await api(base, '/api/v1/auth/login', {
+      method: 'POST',
+      body: { masterPassword: NEW_MASTER },
+    });
     expect(okRes.status).toBe(200);
     token = okRes.body.data.accessToken;
   });
@@ -609,7 +659,14 @@ describe('9. 数据落盘形态（抽查 data/ 目录）', () => {
 
   it('data 目录包含全部约定文件', async () => {
     const { exists } = await import('../src/storage/fsx.js');
-    for (const f of ['meta.json', 'config.json', 'master.json', 'secrets.json', 'categories.json', 'jwt.secret']) {
+    for (const f of [
+      'meta.json',
+      'config.json',
+      'master.json',
+      'secrets.json',
+      'categories.json',
+      'jwt.secret',
+    ]) {
       expect(await exists(`${paths.root}/${f}`), f).toBe(true);
     }
   });

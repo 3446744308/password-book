@@ -26,7 +26,11 @@ beforeEach(async () => {
 async function write(rel, content) {
   const file = path.join(dir, rel);
   await fs.mkdir(path.dirname(file), { recursive: true });
-  await fs.writeFile(file, typeof content === 'string' ? content : JSON.stringify(content, null, 2), 'utf8');
+  await fs.writeFile(
+    file,
+    typeof content === 'string' ? content : JSON.stringify(content, null, 2),
+    'utf8',
+  );
 }
 
 describe('明文扫描（docs/01 §10.3 验收标准 #2）', () => {
@@ -36,15 +40,28 @@ describe('明文扫描（docs/01 §10.3 验收标准 #2）', () => {
     await write('entries/_default.json', {
       categoryId: '_default',
       items: [
-        { id: '01JD8Z8G9QK3M2N7P5R6T8WXYZ', title: '邮箱', passwordEnc: GOOD_CIPHER, notesEnc: null },
-        { id: '01JD8Z8G9QK3M2N7P5R6T8WXY0', title: '无密码', passwordEnc: null, notesEnc: GOOD_CIPHER },
+        {
+          id: '01JD8Z8G9QK3M2N7P5R6T8WXYZ',
+          title: '邮箱',
+          passwordEnc: GOOD_CIPHER,
+          notesEnc: null,
+        },
+        {
+          id: '01JD8Z8G9QK3M2N7P5R6T8WXY0',
+          title: '无密码',
+          passwordEnc: null,
+          notesEnc: GOOD_CIPHER,
+        },
       ],
     });
     await write('history/01JD8Z8G9QK3M2N7P5R6T8WXYZ.json', {
       entryId: '01JD8Z8G9QK3M2N7P5R6T8WXYZ',
       versions: [{ version: 1, passwordEnc: GOOD_CIPHER, changedAt: '2026-11-16T09:00:00.000Z' }],
     });
-    await write('logs/audit.jsonl', '{"ts":"2026-11-16T09:00:00.000Z","event":"LOGIN_OK","ip":"127.0.0.1","detail":"jti=x"}\n');
+    await write(
+      'logs/audit.jsonl',
+      '{"ts":"2026-11-16T09:00:00.000Z","event":"LOGIN_OK","ip":"127.0.0.1","detail":"jti=x"}\n',
+    );
 
     const { scannedFiles, findings } = await scanDataDir(dir);
     // meta.json + master.json + entries/_default.json + history/<id>.json + logs/audit.jsonl

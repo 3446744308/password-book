@@ -39,7 +39,9 @@ export function humanize(err: unknown): string {
 export function applyFieldErrors(err: unknown, setFields: FormInstance['setFields']): void {
   const e = err as ApiError | undefined;
   if (e?.code === 'VALIDATION_ERROR' && e.details?.length) {
-    setFields(e.details.map((d) => ({ name: d.field === '_' ? [] : d.field, errors: [d.message] })));
+    setFields(
+      e.details.map((d) => ({ name: d.field === '_' ? [] : d.field, errors: [d.message] })),
+    );
   }
 }
 

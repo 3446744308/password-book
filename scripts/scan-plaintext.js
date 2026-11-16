@@ -57,7 +57,11 @@ function inspectValue(value, file, pointer, findings) {
     const location = `${pointer}.${key}`;
 
     if (FORBIDDEN_KEYS.includes(lower)) {
-      findings.push({ file, field: location, reason: `出现明文字段「${key}」，应为 passwordEnc / notesEnc` });
+      findings.push({
+        file,
+        field: location,
+        reason: `出现明文字段「${key}」，应为 passwordEnc / notesEnc`,
+      });
     } else if (ENCRYPTED_FIELDS.includes(key) && child !== null) {
       if (typeof child !== 'string' || !CIPHER_RE.test(child)) {
         findings.push({ file, field: location, reason: '密文字段格式非法（应形如 v1:iv:tag:ct）' });
@@ -95,7 +99,11 @@ export async function scanDataDir(dataDir) {
       try {
         parsed = JSON.parse(text);
       } catch {
-        findings.push({ file: rel, field: '(root)', reason: '数据文件不是合法 JSON（可能已损坏）' });
+        findings.push({
+          file: rel,
+          field: '(root)',
+          reason: '数据文件不是合法 JSON（可能已损坏）',
+        });
         continue;
       }
       inspectValue(parsed, rel, '', findings);
@@ -106,7 +114,11 @@ export async function scanDataDir(dataDir) {
         try {
           inspectValue(JSON.parse(line), rel, `[line ${index + 1}]`, findings);
         } catch {
-          findings.push({ file: rel, field: `[line ${index + 1}]`, reason: '审计日志行不是合法 JSON' });
+          findings.push({
+            file: rel,
+            field: `[line ${index + 1}]`,
+            reason: '审计日志行不是合法 JSON',
+          });
         }
       });
     }
@@ -152,7 +164,8 @@ async function main() {
 }
 
 // 直接执行时才跑 CLI（被测试 import 时不执行）
-const invokedDirectly = Boolean(process.argv[1]) && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+const invokedDirectly =
+  Boolean(process.argv[1]) && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (invokedDirectly) await main();
 
 export default main;

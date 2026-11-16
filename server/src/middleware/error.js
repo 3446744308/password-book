@@ -30,7 +30,11 @@ export function errorHandler(err, req, res, _next) {
   }
 
   if (!error.expected) {
-    logger.error('error.response', { code: error.code, status: error.status, path: req.originalUrl });
+    logger.error('error.response', {
+      code: error.code,
+      status: error.status,
+      path: req.originalUrl,
+    });
   }
 
   if (error.headers) {

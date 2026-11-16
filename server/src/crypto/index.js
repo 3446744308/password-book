@@ -21,7 +21,8 @@ class CryptoService {
     const master = await readJson(paths.masterFile, null);
     const secrets = await readJson(paths.secretsFile, null);
     this.#initialized = Boolean(master);
-    this.#mode = secrets?.mode === 'strict' ? 'strict' : secrets?.mode === 'dev' ? 'dev' : config.authMode;
+    this.#mode =
+      secrets?.mode === 'strict' ? 'strict' : secrets?.mode === 'dev' ? 'dev' : config.authMode;
     // dev 模式：DEK 落盘，启动即可用；strict 模式：待登录后注入 KEK
     if (secrets?.mode === 'dev' && secrets.dek) {
       this.#key = Buffer.from(secrets.dek, 'base64');

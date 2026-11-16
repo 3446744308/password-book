@@ -54,7 +54,10 @@ export const categoryService = {
   async remove(id, ip) {
     if (id !== '_default' && !isUlid(id)) throw errors.notFound('分类不存在');
     const result = await repo.deleteCategory(id);
-    await repo.appendAudit('CATEGORY_DELETE', { ip, detail: `id=${id},moved=${result.movedEntries}` });
+    await repo.appendAudit('CATEGORY_DELETE', {
+      ip,
+      detail: `id=${id},moved=${result.movedEntries}`,
+    });
     return result;
   },
 
@@ -70,7 +73,8 @@ export const categoryService = {
       },
       { field: 'entryIds', type: 'stringArray', required: true, minItems: 1, maxItems: 500 },
     ]);
-    if (v.targetCategoryId === id) throw errors.validation([{ field: 'targetCategoryId', message: '目标分类不能是当前分类' }]);
+    if (v.targetCategoryId === id)
+      throw errors.validation([{ field: 'targetCategoryId', message: '目标分类不能是当前分类' }]);
     const target = await repo.getCategory(v.targetCategoryId);
     if (!target) throw errors.notFound('目标分类不存在');
 

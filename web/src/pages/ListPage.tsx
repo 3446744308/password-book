@@ -189,10 +189,7 @@ export default function ListPage() {
 
   return (
     <div>
-      <Space
-        style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}
-        wrap
-      >
+      <Space style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }} wrap>
         <Space align="center">
           <Typography.Title level={4} style={{ margin: 0 }}>
             {scopeTitle}

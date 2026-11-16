@@ -59,7 +59,10 @@ export const authService = {
   async login(masterPassword, ip) {
     const master = await repo.readMaster();
     if (!master) {
-      throw errors.validation([{ field: 'masterPassword', message: '系统尚未初始化' }], '系统尚未初始化');
+      throw errors.validation(
+        [{ field: 'masterPassword', message: '系统尚未初始化' }],
+        '系统尚未初始化',
+      );
     }
     const cfg = await repo.readConfig();
     const now = Date.now();
@@ -97,7 +100,11 @@ export const authService = {
     const ttl = cfg.lockMinutes * 60;
     const jti = ulid();
     const access = signJwt({ sub: 'admin', jti, typ: 'access' }, runtime.jwtSecret, ttl);
-    const refresh = signJwt({ sub: 'admin', jti: ulid(), typ: 'refresh' }, runtime.jwtSecret, config.refreshTokenTtl);
+    const refresh = signJwt(
+      { sub: 'admin', jti: ulid(), typ: 'refresh' },
+      runtime.jwtSecret,
+      config.refreshTokenTtl,
+    );
     await repo.appendAudit('LOGIN_OK', { ip, detail: `jti=${jti}` });
     return {
       accessToken: access.token,
@@ -113,9 +120,11 @@ export const authService = {
   async refresh(refreshToken) {
     if (!refreshToken) throw errors.tokenMissing();
     const payload = verifyJwt(refreshToken, runtime.jwtSecret);
-    if (payload.typ !== 'refresh' || payload.sub !== 'admin') throw errors.tokenInvalid('令牌类型错误');
+    if (payload.typ !== 'refresh' || payload.sub !== 'admin')
+      throw errors.tokenInvalid('令牌类型错误');
     if (runtime.revokedJti.has(payload.jti)) throw errors.tokenInvalid('令牌已失效');
-    if ((payload.issuedAtMs || 0) < runtime.tokenNotBefore) throw errors.tokenInvalid('令牌已失效，请重新登录');
+    if ((payload.issuedAtMs || 0) < runtime.tokenNotBefore)
+      throw errors.tokenInvalid('令牌已失效，请重新登录');
     const cfg = await repo.readConfig();
     const ttl = cfg.lockMinutes * 60;
     const access = signJwt({ sub: 'admin', jti: ulid(), typ: 'access' }, runtime.jwtSecret, ttl);
@@ -166,7 +175,9 @@ export const authService = {
     let reencryptedEntries = 0;
     if (cryptoService.mode === 'strict') {
       const oldKey = cryptoService.currentKey();
-      reencryptedEntries = await repo.reencryptAll((payload) => encryptField(newKek, decryptField(oldKey, payload)));
+      reencryptedEntries = await repo.reencryptAll((payload) =>
+        encryptField(newKek, decryptField(oldKey, payload)),
+      );
       cryptoService.setKey(newKek);
     } else {
       const secrets = await readJson(paths.secretsFile, null);

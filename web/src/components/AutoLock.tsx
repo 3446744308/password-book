@@ -70,9 +70,12 @@ export default function AutoLock() {
     }
     document.addEventListener('visibilitychange', onVisibilityChange);
 
-    const timer = window.setInterval(() => {
-      if (Date.now() - lastActiveRef.current >= timeoutMs) void lock();
-    }, Math.min(TICK_MS, timeoutMs));
+    const timer = window.setInterval(
+      () => {
+        if (Date.now() - lastActiveRef.current >= timeoutMs) void lock();
+      },
+      Math.min(TICK_MS, timeoutMs),
+    );
 
     return () => {
       for (const event of ACTIVITY_EVENTS) {

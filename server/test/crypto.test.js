@@ -106,7 +106,9 @@ describe('JWT（HS256 自实现）', () => {
     const { token } = signJwt({ sub: 'admin' }, secret, 60);
     const [h, p] = token.split('.');
     expect(() => verifyJwt(`${h}.${p}.AAAA`, secret)).toThrow();
-    const evil = Buffer.from(JSON.stringify({ sub: 'hacker', exp: 9999999999 })).toString('base64url');
+    const evil = Buffer.from(JSON.stringify({ sub: 'hacker', exp: 9999999999 })).toString(
+      'base64url',
+    );
     expect(() => verifyJwt(`${h}.${evil}.${token.split('.')[2]}`, secret)).toThrow();
   });
 

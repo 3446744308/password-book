@@ -28,7 +28,11 @@ function entryRules(partial) {
 
 /** 从 body 中分离 password 字段（undefined=不变，null=清空，string=设置） */
 function extractPassword(body) {
-  if (!body || typeof body !== 'object' || !Object.prototype.hasOwnProperty.call(body, 'password')) {
+  if (
+    !body ||
+    typeof body !== 'object' ||
+    !Object.prototype.hasOwnProperty.call(body, 'password')
+  ) {
     return { present: false };
   }
   const value = body.password;
@@ -135,7 +139,8 @@ export const entryService = {
 
       if (pw.present) {
         const currentPlain = entry.passwordEnc ? cryptoService.decrypt(entry.passwordEnc) : null;
-        const willChange = pw.value === null ? Boolean(entry.passwordEnc) : pw.value !== currentPlain;
+        const willChange =
+          pw.value === null ? Boolean(entry.passwordEnc) : pw.value !== currentPlain;
         if (willChange) {
           // 先归档旧密码（崩溃时最坏情况为历史多一条同版本记录，可恢复）
           if (entry.passwordEnc) {
@@ -185,7 +190,11 @@ export const entryService = {
 
   /** PATCH /entries/:id/favorite */
   async setFavorite(id, favorite, ip) {
-    const updated = await repo.mutateEntry(id, (entry) => ({ ...entry, favorite, updatedAt: nowIso() }));
+    const updated = await repo.mutateEntry(id, (entry) => ({
+      ...entry,
+      favorite,
+      updatedAt: nowIso(),
+    }));
     if (!updated) throw errors.notFound('条目不存在');
     await repo.appendAudit('ENTRY_UPDATE', { ip, detail: `id=${id},favorite=${favorite}` });
     return { id, favorite };

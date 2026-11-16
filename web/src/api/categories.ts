@@ -29,8 +29,12 @@ export async function updateCategory(
 }
 
 /** 删除分类（条目自动迁移到默认分类） */
-export async function deleteCategory(id: string): Promise<{ deleted: boolean; movedEntries: number }> {
-  const res = await httpDeleteData<Envelope<{ deleted: boolean; movedEntries: number }>>(`/categories/${id}`);
+export async function deleteCategory(
+  id: string,
+): Promise<{ deleted: boolean; movedEntries: number }> {
+  const res = await httpDeleteData<Envelope<{ deleted: boolean; movedEntries: number }>>(
+    `/categories/${id}`,
+  );
   return res.data;
 }
 

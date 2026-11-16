@@ -99,7 +99,11 @@ export function validate(input, rules) {
       const items = [];
       let bad = false;
       for (const item of value) {
-        if (typeof item !== 'string' || item.trim() === '' || (rule.itemMaxLength && item.length > rule.itemMaxLength)) {
+        if (
+          typeof item !== 'string' ||
+          item.trim() === '' ||
+          (rule.itemMaxLength && item.length > rule.itemMaxLength)
+        ) {
           details.push({ field, message: `${label}包含非法项` });
           bad = true;
           break;

@@ -115,8 +115,12 @@ export default function LoginPage() {
           </Button>
         </Form>
 
-        <Typography.Paragraph type="secondary" style={{ marginTop: 16, marginBottom: 0, fontSize: 12 }}>
-          访问令牌仅保存在内存中，刷新页面需重新解锁；超时 {status?.lockMinutes ?? 30} 分钟未操作将自动失效。
+        <Typography.Paragraph
+          type="secondary"
+          style={{ marginTop: 16, marginBottom: 0, fontSize: 12 }}
+        >
+          访问令牌仅保存在内存中，刷新页面需重新解锁；超时 {status?.lockMinutes ?? 30}{' '}
+          分钟未操作将自动失效。
         </Typography.Paragraph>
       </Card>
     </div>

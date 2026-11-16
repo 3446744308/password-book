@@ -124,7 +124,13 @@ export default function SetupPage() {
             <Requirement ok={hasDigit} text="包含数字" />
           </Space>
 
-          <Button type="primary" htmlType="submit" block loading={submitting} disabled={!strengthOk}>
+          <Button
+            type="primary"
+            htmlType="submit"
+            block
+            loading={submitting}
+            disabled={!strengthOk}
+          >
             创建主密码并进入
           </Button>
         </Form>
@@ -136,7 +142,11 @@ export default function SetupPage() {
 function Requirement({ ok, text }: { ok: boolean; text: string }) {
   return (
     <Space size={6}>
-      {ok ? <CheckCircleTwoTone twoToneColor="#52c41a" /> : <CloseCircleTwoTone twoToneColor="#d9d9d9" />}
+      {ok ? (
+        <CheckCircleTwoTone twoToneColor="#52c41a" />
+      ) : (
+        <CloseCircleTwoTone twoToneColor="#d9d9d9" />
+      )}
       <Typography.Text type={ok ? 'success' : 'secondary'}>{text}</Typography.Text>
     </Space>
   );

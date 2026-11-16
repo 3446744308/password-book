@@ -23,7 +23,10 @@ let failureReported = false;
 function sanitize(fields) {
   const out = { ...fields };
   for (const key of Object.keys(out)) {
-    if (/pass|secret|token|dek|kek|verifier|authorization/i.test(key) && out[key] !== '[REDACTED]') {
+    if (
+      /pass|secret|token|dek|kek|verifier|authorization/i.test(key) &&
+      out[key] !== '[REDACTED]'
+    ) {
       out[key] = '[REDACTED]';
     }
   }
@@ -93,7 +96,12 @@ export async function cleanupOldLogs(now = Date.now()) {
 
 function emit(level, event, fields) {
   if (LEVELS[level] < MIN_LEVEL) return;
-  const line = JSON.stringify({ ts: new Date().toISOString(), level, event, ...sanitize(fields || {}) });
+  const line = JSON.stringify({
+    ts: new Date().toISOString(),
+    level,
+    event,
+    ...sanitize(fields || {}),
+  });
   if (level === 'error') console.error(line);
   else console.log(line);
   queueFileWrite(line);
