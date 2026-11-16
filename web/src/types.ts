@@ -135,6 +135,19 @@ export interface EntryCreateInput {
   favorite?: boolean;
 }
 
+/** 内置分类模板（服务端播种时使用，不含 id，不能当作已存在的分类） */
+export interface PresetCategory {
+  name: string;
+  icon: string;
+  sortOrder: number;
+}
+
+/** 内置预设：分类模板 + 常用标签候选（GET /system/presets） */
+export interface Presets {
+  categories: PresetCategory[];
+  tags: string[];
+}
+
 /** 统一 API 错误（拦截器转换后的形态） */
 export interface ApiError {
   status: number;

@@ -136,13 +136,14 @@ describe('2. 分类管理', () => {
   });
 
   it('创建分类 → 201', async () => {
+    // 注意：'工作' 等已是内置分类名（server/src/storage/presets.js），测试夹具需避开
     const res = await api(base, '/api/v1/categories', {
       method: 'POST',
       token,
-      body: { name: '工作', icon: 'bank', sortOrder: 1 },
+      body: { name: '测试分类', icon: 'bank', sortOrder: 1 },
     });
     expect(res.status).toBe(201);
-    expect(res.body.data.name).toBe('工作');
+    expect(res.body.data.name).toBe('测试分类');
     expect(res.body.data.id).toMatch(/^[0-9A-HJ-NP-TV-Z]{26}$/);
     workCatId = res.body.data.id;
   });
@@ -151,7 +152,7 @@ describe('2. 分类管理', () => {
     const res = await api(base, '/api/v1/categories', {
       method: 'POST',
       token,
-      body: { name: '工作' },
+      body: { name: '测试分类' },
     });
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe('CONFLICT');
@@ -161,10 +162,10 @@ describe('2. 分类管理', () => {
     const res = await api(base, `/api/v1/categories/${workCatId}`, {
       method: 'PUT',
       token,
-      body: { name: '工作账号' },
+      body: { name: '测试分类改名' },
     });
     expect(res.status).toBe(200);
-    expect(res.body.data.name).toBe('工作账号');
+    expect(res.body.data.name).toBe('测试分类改名');
   });
 
   it('默认分类改名 → 403 PROTECTED_RESOURCE', async () => {

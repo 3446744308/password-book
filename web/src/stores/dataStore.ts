@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { listCategories, listEntries } from '../api';
+import { getPresets, listCategories, listEntries } from '../api';
 import type { Category, EntryListItem, Pagination } from '../types';
 
 interface FilterPatch {
@@ -18,8 +18,12 @@ interface DataState {
   page: number;
   size: number;
   loading: boolean;
+  /** 内置常用标签候选（服务端 GET /system/presets 下发） */
+  presetTags: string[];
   /** 加载分类（含条目计数） */
   loadCategories: () => Promise<void>;
+  /** 加载内置标签候选；取不到只影响快捷选择，不阻塞录入 */
+  loadPresets: () => Promise<void>;
   /** 更新筛选条件并回到第一页重新加载 */
   setFilter: (patch: FilterPatch) => void;
   /** 加载条目（可用 patch 临时覆盖页码等） */
@@ -38,6 +42,7 @@ export const useDataStore = create<DataState>((set, get) => ({
   page: 1,
   size: 20,
   loading: false,
+  presetTags: [],
 
   loadCategories: async () => {
     try {
@@ -45,6 +50,15 @@ export const useDataStore = create<DataState>((set, get) => ({
       set({ categories });
     } catch (err) {
       console.error('加载分类失败', err);
+    }
+  },
+
+  loadPresets: async () => {
+    try {
+      const presets = await getPresets();
+      set({ presetTags: presets.tags ?? [] });
+    } catch {
+      // 候选标签属于锦上添花，失败时保持空数组，仍可自由输入标签
     }
   },
 

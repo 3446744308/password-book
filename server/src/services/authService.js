@@ -51,7 +51,12 @@ export const authService = {
 
     await cryptoService.setup(masterPassword);
     await repo.ensureDefaultCategory();
-    await repo.appendAudit('SETUP_OK', { ip, detail: `mode=${cryptoService.mode}` });
+    // 写入内置常用分类（docs/01 §4.2），只执行一次
+    const seeded = await repo.seedPresetCategories();
+    await repo.appendAudit('SETUP_OK', {
+      ip,
+      detail: `mode=${cryptoService.mode},presets=${seeded.seeded}`,
+    });
     return { initialized: true, defaultCategoryId: '_default' };
   },
 

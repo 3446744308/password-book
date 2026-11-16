@@ -13,11 +13,23 @@ const mocks = vi.hoisted(() => ({
   revealEntry: vi.fn(),
   copyText: vi.fn(),
   logout: vi.fn(),
+  createEntry: vi.fn(),
+  getEntry: vi.fn(),
+  updateEntry: vi.fn(),
+  getPresets: vi.fn(),
+  listCategories: vi.fn(),
+  listEntries: vi.fn(),
 }));
 
 vi.mock('../src/api', () => ({
   revealEntry: mocks.revealEntry,
   logout: mocks.logout,
+  createEntry: mocks.createEntry,
+  getEntry: mocks.getEntry,
+  updateEntry: mocks.updateEntry,
+  getPresets: mocks.getPresets,
+  listCategories: mocks.listCategories,
+  listEntries: mocks.listEntries,
 }));
 
 vi.mock('../src/utils/clipboard', () => ({
@@ -27,7 +39,9 @@ vi.mock('../src/utils/clipboard', () => ({
 import SecretField from '../src/components/SecretField';
 import PasswordGenerator from '../src/components/PasswordGenerator';
 import AutoLock from '../src/components/AutoLock';
+import EntryModal from '../src/components/EntryModal';
 import { useAuthStore } from '../src/stores/authStore';
+import { useDataStore } from '../src/stores/dataStore';
 
 const MASK = '••••••••';
 
@@ -43,7 +57,13 @@ beforeEach(() => {
   mocks.revealEntry.mockReset();
   mocks.copyText.mockReset();
   mocks.logout.mockReset();
+  mocks.createEntry.mockReset();
+  mocks.getEntry.mockReset();
+  mocks.updateEntry.mockReset();
+  mocks.getPresets.mockReset();
   useAuthStore.getState().clear();
+  // EntryModal 从 store 读分类与内置标签候选
+  useDataStore.setState({ categories: [], presetTags: [] });
 });
 
 describe('SecretField', () => {
@@ -240,5 +260,60 @@ describe('AutoLock（空闲自动锁定）', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe('EntryModal 内置常用标签', () => {
+  function renderModal() {
+    return wrap(<EntryModal open onClose={() => {}} onSaved={() => {}} />);
+  }
+
+  function checkedCount() {
+    return document.querySelectorAll('.ant-tag-checkable-checked').length;
+  }
+
+  it('把内置标签渲染成可点选的快捷项', () => {
+    useDataStore.setState({ presetTags: ['常用', '工作', '银行'] });
+    renderModal();
+
+    expect(screen.getByText('常用标签')).toBeTruthy();
+    for (const tag of ['常用', '工作', '银行']) {
+      expect(screen.getByText(tag)).toBeTruthy();
+    }
+  });
+
+  it('点击即选中，再点取消', () => {
+    useDataStore.setState({ presetTags: ['常用'] });
+    renderModal();
+    const chip = screen.getByText('常用');
+    // getByText 命中的可能是内层文本节点，取最近的标签本体
+    const tagEl = chip.closest('.ant-tag-checkable') as HTMLElement;
+    expect(tagEl).toBeTruthy();
+
+    fireEvent.click(chip);
+    expect(tagEl.className).toContain('ant-tag-checkable-checked');
+
+    fireEvent.click(chip);
+    expect(tagEl.className).not.toContain('ant-tag-checkable-checked');
+  });
+
+  it(`选中数达到上限（10）后不再追加`, () => {
+    useDataStore.setState({
+      presetTags: Array.from({ length: 12 }, (_, i) => `标签${i + 1}`),
+    });
+    renderModal();
+
+    for (let i = 0; i < 10; i += 1) fireEvent.click(screen.getByText(`标签${i + 1}`));
+    expect(checkedCount()).toBe(10);
+
+    // 第 11 个应被拒绝
+    fireEvent.click(screen.getByText('标签11'));
+    expect(checkedCount()).toBe(10);
+  });
+
+  it('没有内置标签时不渲染快捷区（仍可自由输入）', () => {
+    useDataStore.setState({ presetTags: [] });
+    renderModal();
+    expect(screen.queryByText('常用标签')).toBeNull();
   });
 });

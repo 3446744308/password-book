@@ -4,6 +4,7 @@ import { config } from '../config.js';
 import * as repo from '../storage/repository.js';
 import { cryptoService } from '../crypto/index.js';
 import { createBackup } from '../storage/backup.js';
+import { PRESET_CATEGORIES, PRESET_TAGS } from '../storage/presets.js';
 import { VERSION, SCHEMA_VERSION } from '../version.js';
 import { validate } from '../utils/validate.js';
 import { errors } from '../utils/errors.js';
@@ -43,6 +44,18 @@ export const systemService = {
 
   getConfig() {
     return repo.readConfig().then(pickConfig);
+  },
+
+  /**
+   * GET /system/presets：内置分类/标签候选（docs/03 §6.7）。
+   * 分类是"播种时用过的模板"，实际分类以 GET /categories 为准；
+   * 标签在数据模型里只是条目上的字符串，这里提供客户端做快捷选择。
+   */
+  presets() {
+    return {
+      categories: PRESET_CATEGORIES.map((c) => ({ ...c })),
+      tags: [...PRESET_TAGS],
+    };
   },
 
   async updateConfig(body, ip) {

@@ -4,6 +4,7 @@ import instance from '../src/api/request';
 import {
   login,
   getStatus,
+  getPresets,
   listCategories,
   createCategory,
   listEntries,
@@ -89,6 +90,24 @@ describe('信封解包只做一次', () => {
     expect(status).toBeDefined();
     expect(status.initialized).toBe(false);
     expect(status.lockMinutes).toBe(30);
+  });
+
+  it('getPresets 返回内置分类模板与常用标签', async () => {
+    stubAdapter(() => ({
+      status: 200,
+      body: {
+        data: {
+          categories: [{ name: '工作', icon: 'project', sortOrder: 10 }],
+          tags: ['常用', '工作'],
+        },
+      },
+    }));
+
+    const presets = await getPresets();
+
+    expect(presets.tags).toEqual(['常用', '工作']);
+    expect(presets.categories).toHaveLength(1);
+    expect(presets.categories[0].name).toBe('工作');
   });
 
   it('listEntries 同时拿到 data 与 pagination', async () => {

@@ -1,5 +1,12 @@
 import { httpGet, httpPut, httpPost, type Envelope } from './request';
-import type { AuditItem, BackupResult, Pagination, SystemConfig, SystemHealth } from '../types';
+import type {
+  AuditItem,
+  BackupResult,
+  Pagination,
+  Presets,
+  SystemConfig,
+  SystemHealth,
+} from '../types';
 
 export async function health(): Promise<SystemHealth> {
   const res = await httpGet<Envelope<SystemHealth>>('/system/health');
@@ -25,6 +32,12 @@ export async function listAudit(
   if (query.event) params.event = query.event;
   const res = await httpGet<Envelope<AuditItem[]>>('/system/audit', params);
   return { data: res.data, pagination: res.pagination ?? { page: 1, size: 50, total: 0 } };
+}
+
+/** 内置预设：常用分类模板与标签候选（用于编辑器里的快捷选择） */
+export async function getPresets(): Promise<Presets> {
+  const res = await httpGet<Envelope<Presets>>('/system/presets');
+  return res.data;
 }
 
 /** 触发一次数据备份 */

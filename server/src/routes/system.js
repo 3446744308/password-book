@@ -38,6 +38,13 @@ router.put(
 );
 
 router.get(
+  '/presets',
+  h(async (_req, res) => {
+    ok(res, systemService.presets());
+  }),
+);
+
+router.get(
   '/audit',
   h(async (req, res) => {
     const { list, pagination } = await systemService.listAudit(req.query);

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, Form, Input, Modal, Select, Space, Switch, Tag } from 'antd';
+import { Button, Form, Input, Modal, Select, Space, Switch, Tag, Typography } from 'antd';
 import { KeyOutlined } from '@ant-design/icons';
 import { createEntry, getEntry, updateEntry } from '../api';
 import PasswordGenerator from './PasswordGenerator';
@@ -7,6 +7,9 @@ import useDataStore from '../stores/dataStore';
 import { humanize, applyFieldErrors } from '../utils/errors';
 import { useNotify } from '../utils/notify';
 import type { EntryCreateInput } from '../types';
+
+/** 与 docs/01 §4.3 的条目标签上限保持一致 */
+const MAX_TAGS = 10;
 
 interface Props {
   open: boolean;
@@ -34,6 +37,7 @@ export default function EntryModal({ open, entryId, defaultCategoryId, onClose, 
   const { message } = useNotify();
   const categories = useDataStore((s) => s.categories);
   const loadCategories = useDataStore((s) => s.loadCategories);
+  const presetTags = useDataStore((s) => s.presetTags);
 
   const [saving, setSaving] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
@@ -43,6 +47,24 @@ export default function EntryModal({ open, entryId, defaultCategoryId, onClose, 
   const [genOpen, setGenOpen] = useState(false);
 
   const isEdit = Boolean(entryId);
+
+  // 内置常用标签做成可点选的快捷项（antd 的 tags 模式下拉被 open=false 关掉了，
+  // 所以不能靠下拉给候选，改用 CheckableTag 直接展示）
+  const watchedTags: string[] = Form.useWatch('tags', form) ?? [];
+
+  const toggleTag = (tag: string, next: boolean) => {
+    const current: string[] = form.getFieldValue('tags') ?? [];
+    if (!next) {
+      form.setFieldsValue({ tags: current.filter((t) => t !== tag) });
+      return;
+    }
+    if (current.includes(tag)) return;
+    if (current.length >= MAX_TAGS) {
+      message.warning(`最多 ${MAX_TAGS} 个标签`);
+      return;
+    }
+    form.setFieldsValue({ tags: [...current, tag] });
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -238,16 +260,42 @@ export default function EntryModal({ open, entryId, defaultCategoryId, onClose, 
           <Form.Item
             name="tags"
             label="标签"
-            rules={[{ max: 10, type: 'array', message: '最多 10 个标签' }]}
+            rules={[{ max: MAX_TAGS, type: 'array', message: `最多 ${MAX_TAGS} 个标签` }]}
           >
             <Select
               mode="tags"
               tokenSeparators={[',', ' ']}
-              placeholder="回车添加标签（最多 10 个）"
+              placeholder={`回车添加标签（最多 ${MAX_TAGS} 个）`}
               maxTagCount={6}
               open={false}
             />
           </Form.Item>
+
+          {presetTags.length > 0 && (
+            <div
+              style={{
+                marginTop: -12,
+                marginBottom: 16,
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                常用标签
+              </Typography.Text>
+              {presetTags.map((tag) => (
+                <Tag.CheckableTag
+                  key={tag}
+                  checked={watchedTags.includes(tag)}
+                  onChange={(next) => toggleTag(tag, next)}
+                >
+                  {tag}
+                </Tag.CheckableTag>
+              ))}
+            </div>
+          )}
 
           <Form.Item
             name="notes"

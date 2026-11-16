@@ -6,6 +6,7 @@ import { errors } from '../utils/errors.js';
 import { ulid, nowIso, isUlid } from '../utils/ids.js';
 import { logger } from '../logger.js';
 import { config } from '../config.js';
+import { PRESET_CATEGORIES } from './presets.js';
 
 /**
  * 数据仓库：data/ 目录的唯一读写出口（docs/02 §3.2）。
@@ -87,6 +88,46 @@ export async function ensureDefaultCategory() {
       await writeJson(file, { categoryId: '_default', updatedAt: nowIso(), items: [] });
     }
     return doc;
+  });
+}
+
+/**
+ * 写入内置分类（docs/01 §4.2）。**只执行一次**：
+ * 播种后置 `presetsSeeded: true`，此后即便用户删掉这些分类也不会在重启时复活。
+ * 同名分类已存在则跳过，保证对已有数据的库幂等。
+ */
+export async function seedPresetCategories() {
+  return withLock(async () => {
+    const doc = await readCategoriesDoc();
+    if (doc.presetsSeeded) return { seeded: 0, alreadySeeded: true };
+
+    const existingNames = new Set(doc.categories.map((c) => c.name));
+    let seeded = 0;
+    for (const preset of PRESET_CATEGORIES) {
+      if (existingNames.has(preset.name)) continue;
+      const cat = {
+        id: ulid(),
+        name: preset.name,
+        icon: preset.icon,
+        sortOrder: preset.sortOrder,
+        protected: false,
+        createdAt: nowIso(),
+        updatedAt: nowIso(),
+      };
+      doc.categories.push(cat);
+      // 与 createCategory 保持一致：每个分类一个条目文件
+      await writeJson(paths.entryFile(cat.id), {
+        categoryId: cat.id,
+        updatedAt: nowIso(),
+        items: [],
+      });
+      seeded += 1;
+    }
+
+    doc.presetsSeeded = true;
+    doc.updatedAt = nowIso();
+    await writeJson(paths.categoriesFile, doc);
+    return { seeded, alreadySeeded: false };
   });
 }
 

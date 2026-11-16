@@ -31,6 +31,7 @@ export default function MainLayout() {
   const categoryId = useDataStore((s) => s.categoryId);
   const setFilter = useDataStore((s) => s.setFilter);
   const loadCategories = useDataStore((s) => s.loadCategories);
+  const loadPresets = useDataStore((s) => s.loadPresets);
   const theme = useUIStore((s) => s.theme);
   const toggleTheme = useUIStore((s) => s.toggleTheme);
   const collapsed = useUIStore((s) => s.siderCollapsed);
@@ -38,7 +39,8 @@ export default function MainLayout() {
 
   useEffect(() => {
     void loadCategories();
-  }, [loadCategories]);
+    void loadPresets();
+  }, [loadCategories, loadPresets]);
 
   const handleLock = async () => {
     try {

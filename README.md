@@ -32,6 +32,11 @@ node scripts/dev.js
 
 首次打开页面会进入 `/setup` 创建**你自己的主密码**（≥10 位，需同时含字母与数字）。创建后会自动解锁并写入 `data/`。
 
+初始化时会预置 **7 个常用分类**（工作、邮箱、银行金融、社交、购物、开发工具、影音娱乐）和
+**16 个常用标签**（常用、工作、银行、支付、开发、服务器…）。它们就是普通分类/标签：
+可改名、可删除、可调排序，删掉后不会在重启时复活。清单与播种规则见
+[设计文档 4.3](docs/01-开发设计文档.md#43-数据字典)。
+
 **生产部署**：`npm --prefix web run build` 产出 `web/dist`，由 Express 直接托管（SPA 回退已内置），单进程即可运行：
 
 ```bash
@@ -138,18 +143,18 @@ node scripts/scan-plaintext.js --json # 机器可读
 | --- | --- | --- |
 | 仓库根 | `node scripts/dev.js` | **一条命令同时启动前后端** |
 | `server/` | `npm run dev` | 只启动后端（`--watch` 热重启） |
-| `server/` | `npm test` | 后端 92 个接口/单元用例 |
+| `server/` | `npm test` | 后端 100 个接口/单元用例 |
 | `server/` | `npm run lint` | ESLint |
 | `server/` | `npm run format` / `format:check` | Prettier 格式化 / 只校验 |
 | `server/` | `npm run backup` | 手动备份 `data/` |
 | `server/` | `npm run scan` | 明文扫描：断言 `data/` 无明文密码字段 |
 | `web/` | `npm run dev` | Vite 开发服务器 |
 | `web/` | `npm run build` | 类型检查 + 生产构建 |
-| `web/` | `npm test` | 前端 40 个单元/组件/契约/守卫用例 |
+| `web/` | `npm test` | 前端 45 个单元/组件/契约/守卫用例 |
 | `web/` | `npm run typecheck` | 类型检查（含测试文件） |
 | `web/` | `npm run lint` | ESLint |
 | `web/` | `npm run format` / `format:check` | Prettier 格式化 / 只校验 |
-| 仓库根 | `node scripts/smoke.js` | 对运行中的服务跑全链路冒烟（32 项断言） |
+| 仓库根 | `node scripts/smoke.js` | 对运行中的服务跑全链路冒烟（35 项断言） |
 
 > ⚠️ `scripts/smoke.js` 在目标库**未初始化**时会用测试主密码 `Smoke123456` 调用 `/auth/setup` 把库占下来。
 > 为防止误伤真实数据，未初始化时必须显式加 `--allow-setup`；对真实密码本请**不要**加这个参数。
@@ -162,10 +167,10 @@ node scripts/scan-plaintext.js --json # 机器可读
 
 ## 测试
 
-- **后端（92 个用例）**：Vitest + 真实 HTTP 请求。覆盖加解密（含密文篡改、错误密钥）、KDF/verifier、JWT 篡改与过期、ULID；原子写与 50 路并发写队列；登录限速与 5 次失败锁定；29 个端点的正常/参数非法/未认证/不存在四类路径；会话生命周期（登出/刷新/换主密码后旧令牌失效）；日志落盘与脱敏；明文扫描器自身的 10 个用例。每个用例自建临时 `data/` 目录并在结束时删除。
-- **前端（40 个用例）**：Vitest + jsdom + `@testing-library/react`。
+- **后端（100 个用例）**：Vitest + 真实 HTTP 请求。覆盖加解密（含密文篡改、错误密钥）、KDF/verifier、JWT 篡改与过期、ULID；原子写与 50 路并发写队列；登录限速与 5 次失败锁定；30 个端点的正常/参数非法/未认证/不存在四类路径；会话生命周期（登出/刷新/换主密码后旧令牌失效）；日志落盘与脱敏；明文扫描器自身的 10 个用例；内置分类播种（幂等、删除后不复活、老库补写）与 `GET /system/presets`。每个用例自建临时 `data/` 目录并在结束时删除。
+- **前端（45 个用例）**：Vitest + jsdom + `@testing-library/react`。
   - 纯逻辑：密码生成（拒绝采样无取模偏差、排除易混淆字符、熵值分级）、时间/体积格式化、错误文案与表单回填。
-  - 组件：`SecretField`（默认掩码、点击才 reveal、失焦/切后台立即掩码、30 秒自动掩码、复制路径）、`PasswordGenerator`（默认 20 位、回传、熵值标签）、`AutoLock`（空闲超时锁定、未超时不锁、未登录不动作）。
+  - 组件：`SecretField`（默认掩码、点击才 reveal、失焦/切后台立即掩码、30 秒自动掩码、复制路径）、`PasswordGenerator`（默认 20 位、回传、熵值标签）、`AutoLock`（空闲超时锁定、未超时不锁、未登录不动作）、`EntryModal` 内置标签快捷选择（点选/取消、10 个上限、无候选时不渲染）。
   - **API 契约**：用 axios 自定义 adapter 伪造响应，锁死「信封只解包一次」——辅助函数返回 `{data, pagination}`，取 `.data` 的职责只在 api 模块。曾经多剥一层导致所有接口返回 `undefined`。
   - **App 级路由守卫**：未初始化时在 `/setup` 必须渲染表单（防回环重定向白屏）、`/login` 引导到 `/setup`、已初始化停在 `/setup` 跳 `/login`、后端不可达不白屏。
   - 测试文件也参与类型检查：`web/tsconfig.test.json`，`npm run typecheck` 一并跑。

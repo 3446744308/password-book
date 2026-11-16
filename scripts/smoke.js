@@ -112,6 +112,27 @@ async function main() {
     '默认分类存在',
     cats.body?.data?.some((c) => c.id === '_default'),
   );
+  const catNames = (cats.body?.data || []).map((c) => c.name);
+  check(
+    '内置分类已播种（工作/邮箱/银行金融）',
+    ['工作', '邮箱', '银行金融'].every((n) => catNames.includes(n)),
+    catNames.join(','),
+  );
+
+  // 6.1 内置预设（常用标签候选）
+  const presets = await call('/api/v1/system/presets', { token });
+  check(
+    'GET /system/presets 200 且含常用标签',
+    presets.status === 200 &&
+      Array.isArray(presets.body?.data?.tags) &&
+      presets.body.data.tags.includes('常用'),
+    JSON.stringify(presets.body?.error ?? ''),
+  );
+  check(
+    '内置分类模板不含 id（避免误当已存在分类）',
+    Array.isArray(presets.body?.data?.categories) &&
+      presets.body.data.categories.every((c) => c.id === undefined),
+  );
 
   const newCat = await call('/api/v1/categories', {
     method: 'POST',

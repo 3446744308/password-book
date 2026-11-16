@@ -51,6 +51,13 @@ async function bootstrap() {
 
   await cryptoService.load();
 
+  // 老库升级路径：已初始化但还没有内置分类时补写一次（presetsSeeded 标记保证只执行一次）
+  if (cryptoService.initialized) {
+    const { seedPresetCategories } = await import('./storage/repository.js');
+    const { seeded } = await seedPresetCategories();
+    if (seeded > 0) logger.info('presets.seeded', { categories: seeded });
+  }
+
   // dev 模式把 DEK 明文写在 data/secrets.json，只适用于本机单机使用（docs/01 §4.5）
   if (cryptoService.mode === 'dev' && !isLoopbackHost(config.host)) {
     logger.warn('security.dev_mode.exposed', {

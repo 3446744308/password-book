@@ -2,7 +2,7 @@
 
 | 项目 | 内容 |
 | --- | --- |
-| 文档版本 | v1.1 |
+| 文档版本 | v1.2 |
 | 编写日期 | 2026-11-16 |
 | API 版本 | `v1`（Base URL：`/api/v1`） |
 | 面向对象 | Web 前端（Ant Design）、未来手机 App、其他任何客户端 |
@@ -125,6 +125,10 @@ curl -X POST http://localhost:3100/api/v1/entries \
 ```json
 { "data": { "initialized": true, "defaultCategoryId": "_default" } }
 ```
+
+> 初始化会同时写入**内置分类**（工作、邮箱、银行金融、社交、购物、开发工具、影音娱乐），
+> 因此紧接着的 `GET /categories` 会返回默认分类 + 这 7 个分类。清单与播种规则见
+> [设计文档 4.3](./01-开发设计文档.md#43-数据字典)。已初始化的库在服务启动时会自动补写一次。
 
 **错误**：`400 VALIDATION_ERROR`、`409 ALREADY_INITIALIZED`
 
@@ -686,6 +690,33 @@ Set-Cookie: refreshToken=<...>; HttpOnly; Secure; SameSite=Strict; Path=/api/v1/
 
 ---
 
+### 6.7 `GET /system/presets` — 内置分类模板与常用标签
+
+> **鉴权**：Bearer。客户端用它做录入时的快捷选择；数据模型里标签只是条目上的自由字符串，
+> 所以这里返回的是**候选值**，不是已存在的实体。
+
+**响应** `200`
+
+```json
+{
+  "data": {
+    "categories": [
+      { "name": "工作", "icon": "project", "sortOrder": 10 },
+      { "name": "邮箱", "icon": "mail", "sortOrder": 20 }
+    ],
+    "tags": ["常用", "工作", "个人", "邮箱", "银行"]
+  }
+}
+```
+
+> `categories` 是**播种时用过的模板**，不含 `id`——实际分类请以 `GET /categories` 为准，
+> 不要把它当作已存在的分类去调用 `/categories/:id`。
+> `tags` 每项 ≤ 20 字符，与条目标签约束一致；客户端应允许用户自行输入其它标签。
+
+**错误**：`401 TOKEN_MISSING`
+
+---
+
 ## 7. 错误码总表
 
 > 通用规则：`401` Token 缺失/失效类；`403` 权限类；`404` 不存在；`409` 冲突；`423` 锁定；`429` 限速；`5xx` 服务端。
@@ -806,6 +837,7 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:3100/api/v1/entries/01JD
 | 27 | PUT | `/api/v1/system/config` | ✓ | 写配置 |
 | 28 | GET | `/api/v1/system/audit` | ✓ | 审计日志 |
 | 29 | POST | `/api/v1/system/backup` | ✓ | 触发备份 |
+| 30 | GET | `/api/v1/system/presets` | ✓ | 内置分类模板与常用标签 |
 
 ---
 
@@ -825,3 +857,4 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:3100/api/v1/entries/01JD
 | --- | --- | --- | --- |
 | v1.0 | 2026-11-16 | 首次发布：29 个端点、信封规范、错误码总表、多端接入指引 | — |
 | v1.1 | 2026-11-16 | 实现校对，无破坏性变更：① §1.3/§2.2/§6.4 明确 `lockMinutes` 即访问令牌的实际 TTL（`expiresIn = lockMinutes × 60`），改配置只影响新签发的令牌；② §4.4 修正 `reveal` 的错误码——无密码应为 `409 NO_PASSWORD`（原写 `CONFLICT`），并删除实现中并不存在的 `423 LOCKED_OUT`；③ §6.2 补上实现已返回但文档缺失的 `failedAttempts` 字段；④ 补充 `Secure` Cookie 仅 HTTPS 下发的说明 | — |
+| v1.2 | 2026-11-16 | 新增端点，无破坏性变更：① 新增 §6.7 `GET /system/presets`（内置分类模板与常用标签候选），端点总数 29 → 30；② §2.1 补充说明初始化会写入内置分类，`GET /categories` 的初始内容因此从 1 个变为 8 个 | — |
