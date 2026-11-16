@@ -154,10 +154,9 @@ body {
 
 /* ===== 系统设置页 ===== */
 
-/* 页面宽度上限 + 居中，避免宽屏下内容贴着左侧 */
+/* 页面占满内容区（不再限宽居中）；留白交给 .app-content 的下内边距 */
 .settings-page {
-  max-width: 1120px;
-  margin: 0 auto;
+  width: 100%;
 }
 
 .settings-title {
@@ -168,17 +167,19 @@ body {
   margin-bottom: 16px !important;
 }
 
-/* 表单区限宽，保持行宽可读；审计表格等宽内容用 --wide 占满 */
+/* 内容区同样铺满，宽度由栅格与控件上限控制，而不是给容器设限 */
 .settings-pane {
-  max-width: 840px;
-}
-
-.settings-pane--wide {
-  max-width: none;
+  width: 100%;
 }
 
 .settings-form {
   margin-top: 16px;
+}
+
+/* 数字/短文本控件在宽屏下不跟着拉伸（列宽由栅格决定，控件本身有上限） */
+.settings-form .ant-input-number {
+  width: 100%;
+  max-width: 260px;
 }
 
 .settings-group {
@@ -235,11 +236,4 @@ body {
 .audit-time__relative {
   font-size: 12px;
   opacity: 0.6;
-}
-
-/* 窄屏下 .settings-page 的宽度上限由上层内容区决定，这里只需去掉居中的额外留白 */
-@media (max-width: 768px) {
-  .settings-page {
-    max-width: none;
-  }
 }

@@ -119,8 +119,8 @@ function RichList({ items, check = false }: { items: ReactNode[]; check?: boolea
  * 分区导航由**侧边栏子菜单**承担（见 MainLayout），页面内不再放 Tabs，
  * 避免两套导航并存。这里只按 section 渲染对应功能区：
  * - 页头：分区标题 + 一句话说明
- * - 主体：单张卡片；表单区用 .settings-pane 限宽保持行宽可读，
- *   审计表格用 .settings-pane--wide 占满
+ * - 主体：单张卡片铺满内容区；内部用栅格与控件宽度上限控制观感，
+ *   不给容器加 max-width（否则宽屏下右侧会留白）
  */
 export default function SettingsPage({ section }: { section: SettingsSection }) {
   const navigate = useNavigate();
@@ -184,14 +184,15 @@ function MasterPasswordTab({ onDone }: { onDone: () => void }) {
 
   return (
     <div className="settings-pane">
+      {/* 页宽铺满后，用栅格把「表单」与「说明」按比例摊开，密码字段两列并排，
+          避免输入框被拉到整行那么长 */}
       <Row gutter={[24, 24]}>
-        <Col xs={24} lg={14}>
+        <Col xs={24} xl={14}>
           <Alert
             type="warning"
             showIcon
             message="修改主密码会立即使当前登录失效"
             description="所有已签发的访问令牌都会作废，需要用新主密码重新解锁；已保存的条目数据不受影响。"
-            className="settings-alert"
           />
           <Form
             form={form}
@@ -200,45 +201,60 @@ function MasterPasswordTab({ onDone }: { onDone: () => void }) {
             requiredMark={false}
             className="settings-form"
           >
-            <Form.Item name="currentPassword" label="当前主密码" rules={MASTER_RULES}>
-              <Input.Password placeholder="请输入当前主密码" autoComplete="current-password" />
-            </Form.Item>
+            <Row gutter={16}>
+              <Col xs={24} md={12}>
+                <Form.Item name="currentPassword" label="当前主密码" rules={MASTER_RULES}>
+                  <Input.Password placeholder="请输入当前主密码" autoComplete="current-password" />
+                </Form.Item>
+              </Col>
 
-            <Form.Item
-              name="newPassword"
-              label="新主密码"
-              rules={[
-                ...MASTER_RULES,
-                {
-                  validator(_, value: string) {
-                    if (!value) return Promise.resolve();
-                    if (!/[A-Za-z]/.test(value) || !/[0-9]/.test(value)) {
-                      return Promise.reject(new Error('新主密码需同时包含字母和数字'));
-                    }
-                    return Promise.resolve();
-                  },
-                },
-              ]}
-            >
-              <Input.Password placeholder="至少 10 位，含字母与数字" autoComplete="new-password" />
-            </Form.Item>
+              <Col xs={24} md={12}>
+                <Form.Item
+                  name="newPassword"
+                  label="新主密码"
+                  rules={[
+                    ...MASTER_RULES,
+                    {
+                      validator(_, value: string) {
+                        if (!value) return Promise.resolve();
+                        if (!/[A-Za-z]/.test(value) || !/[0-9]/.test(value)) {
+                          return Promise.reject(new Error('新主密码需同时包含字母和数字'));
+                        }
+                        return Promise.resolve();
+                      },
+                    },
+                  ]}
+                >
+                  <Input.Password
+                    placeholder="至少 10 位，含字母与数字"
+                    autoComplete="new-password"
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
 
-            <Form.Item
-              name="confirm"
-              label="确认新主密码"
-              dependencies={['newPassword']}
-              rules={[
-                { required: true, message: '请再次输入新主密码' },
-                ({ getFieldValue }) => ({
-                  validator(_, value: string) {
-                    if (!value || getFieldValue('newPassword') === value) return Promise.resolve();
-                    return Promise.reject(new Error('两次输入的新主密码不一致'));
-                  },
-                }),
-              ]}
-            >
-              <Input.Password placeholder="再次输入新主密码" autoComplete="new-password" />
-            </Form.Item>
+            <Row gutter={16}>
+              <Col xs={24} md={12}>
+                <Form.Item
+                  name="confirm"
+                  label="确认新主密码"
+                  dependencies={['newPassword']}
+                  rules={[
+                    { required: true, message: '请再次输入新主密码' },
+                    ({ getFieldValue }) => ({
+                      validator(_, value: string) {
+                        if (!value || getFieldValue('newPassword') === value) {
+                          return Promise.resolve();
+                        }
+                        return Promise.reject(new Error('两次输入的新主密码不一致'));
+                      },
+                    }),
+                  ]}
+                >
+                  <Input.Password placeholder="再次输入新主密码" autoComplete="new-password" />
+                </Form.Item>
+              </Col>
+            </Row>
 
             <div className="settings-actions">
               <Button type="primary" danger htmlType="submit" loading={submitting}>
@@ -248,7 +264,7 @@ function MasterPasswordTab({ onDone }: { onDone: () => void }) {
           </Form>
         </Col>
 
-        <Col xs={24} lg={10}>
+        <Col xs={24} xl={10}>
           <Card size="small" title="关于主密码">
             <RichList
               items={[
@@ -315,7 +331,7 @@ function ConfigTab() {
       <Form form={form} layout="vertical" onFinish={onFinish} className="settings-form">
         <Card size="small" title="会话与锁定" className="settings-group">
           <Row gutter={16}>
-            <Col xs={24} md={8}>
+            <Col xs={24} sm={12} xl={8}>
               <Form.Item
                 name="lockMinutes"
                 label="会话时长（分钟）"
@@ -325,7 +341,7 @@ function ConfigTab() {
                 <InputNumber min={1} max={1440} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
-            <Col xs={24} md={8}>
+            <Col xs={24} sm={12} xl={8}>
               <Form.Item
                 name="failedAttempts"
                 label="允许连续失败次数"
@@ -335,7 +351,7 @@ function ConfigTab() {
                 <InputNumber min={3} max={10} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
-            <Col xs={24} md={8}>
+            <Col xs={24} sm={12} xl={8}>
               <Form.Item
                 name="lockMinutesAfterBan"
                 label="锁定时长（分钟）"
@@ -350,7 +366,7 @@ function ConfigTab() {
 
         <Card size="small" title="密码与历史" className="settings-group">
           <Row gutter={16}>
-            <Col xs={24} md={8}>
+            <Col xs={24} sm={12} xl={8}>
               <Form.Item
                 name="minPasswordLength"
                 label="主密码最小长度"
@@ -360,7 +376,7 @@ function ConfigTab() {
                 <InputNumber min={10} max={32} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
-            <Col xs={24} md={8}>
+            <Col xs={24} sm={12} xl={8}>
               <Form.Item
                 name="historyKeep"
                 label="密码历史保留条数"
@@ -539,7 +555,7 @@ function AuditTab() {
   ];
 
   return (
-    <div className="settings-pane settings-pane--wide">
+    <div className="settings-pane">
       <Card
         size="small"
         title="审计日志"

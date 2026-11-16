@@ -138,7 +138,9 @@ describe('分区 → 内容映射', () => {
     // 回环地址显示为「本机」
     expect(screen.getByText('本机')).toBeTruthy();
 
-    expect(container.querySelector('.settings-pane--wide')).toBeTruthy();
+    // 内容区铺满：不再有宽度上限类，页面与分区容器都在
+    expect(container.querySelector('.settings-page')).toBeTruthy();
+    expect(container.querySelector('.settings-pane')).toBeTruthy();
   });
 
   it('about：渲染运行状态与安全说明', async () => {
