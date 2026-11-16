@@ -1,0 +1,27 @@
+# 依赖
+node_modules/
+
+# 构建产物
+dist/
+build/
+
+# 数据目录（永不提交，仅保留占位）
+data/*
+!data/.gitkeep
+
+# 环境变量实体文件
+.env
+.env.local
+
+# 日志与备份
+*.log
+logs/
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# 测试覆盖
+coverage/
