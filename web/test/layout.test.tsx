@@ -82,3 +82,20 @@ describe('侧边栏设置子菜单', () => {
     expect(selected?.textContent).toContain('数据备份');
   });
 });
+
+describe('左右独立滚动', () => {
+  it('侧栏菜单区与右侧内容区是两个独立滚动容器，整页不滚动', () => {
+    const { container } = renderLayout();
+
+    expect(container.querySelector('.app-layout')).toBeTruthy();
+    expect(container.querySelector('.app-sider-menu')).toBeTruthy();
+
+    const content = container.querySelector('.app-content');
+    expect(content).toBeTruthy();
+
+    // 顶栏在内容区之外，滚内容时顶栏保持可见
+    const header = container.querySelector('.app-header');
+    expect(header).toBeTruthy();
+    expect(content?.contains(header as Node)).toBe(false);
+  });
+});

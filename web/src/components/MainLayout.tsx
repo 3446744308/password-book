@@ -125,53 +125,36 @@ export default function MainLayout() {
   };
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
+    // 整页锁定视口高度、不出现整页滚动条；左右两栏各自滚动（样式见 styles.css）
+    <Layout className="app-layout">
       <Sider
+        className="app-sider"
         collapsible
         collapsed={collapsed}
         onCollapse={setCollapsed}
         breakpoint="lg"
         collapsedWidth={60}
         theme="light"
-        style={{ borderRight: '1px solid rgba(5, 5, 5, 0.06)' }}
       >
-        <div
-          style={{
-            height: 56,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            fontWeight: 700,
-            fontSize: 16,
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-          }}
-        >
+        <div className="app-sider-logo">
           <LockOutlined style={{ color: '#1677ff' }} />
           {!collapsed && <span>密码本</span>}
         </div>
-        <Menu
-          mode="inline"
-          selectedKeys={[selectedKey]}
-          items={menuItems}
-          onSelect={onSelect}
-          // 折叠时交给 antd 用弹出层，避免受控 openKeys 与 inlineCollapsed 冲突
-          {...(collapsed ? {} : { openKeys, onOpenChange: setOpenKeys })}
-        />
+        {/* 分类/设置子菜单过多时，只有这一块滚动 */}
+        <div className="app-sider-menu">
+          <Menu
+            mode="inline"
+            selectedKeys={[selectedKey]}
+            items={menuItems}
+            onSelect={onSelect}
+            // 折叠时交给 antd 用弹出层，避免受控 openKeys 与 inlineCollapsed 冲突
+            {...(collapsed ? {} : { openKeys, onOpenChange: setOpenKeys })}
+          />
+        </div>
       </Sider>
 
-      <Layout>
-        <Header
-          style={{
-            background: 'transparent',
-            padding: '0 16px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            borderBottom: '1px solid rgba(5, 5, 5, 0.06)',
-          }}
-        >
+      <Layout className="app-main">
+        <Header className="app-header">
           <Space>
             <Button
               type="text"
@@ -196,7 +179,8 @@ export default function MainLayout() {
           </Space>
         </Header>
 
-        <Content style={{ padding: '16px 20px', overflow: 'auto' }}>
+        {/* 顶栏固定，内容区独立滚动 */}
+        <Content className="app-content">
           <Outlet />
         </Content>
       </Layout>

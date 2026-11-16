@@ -9,6 +9,7 @@ body,
 #root {
   margin: 0;
   padding: 0;
+  height: 100%;
   min-height: 100%;
 }
 
@@ -18,6 +19,78 @@ body {
     'Microsoft YaHei', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* ===== 主框架：整页不滚动，左右两栏各自滚动 ===== */
+
+/* 锁定在视口高度；dvh 让移动端动态工具栏出现时也不撑破 */
+.app-layout {
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+/* ---- 左侧栏 ---- */
+
+/* antd 会在 Sider 内包一层 children，把它变成纵向 flex 才能让菜单区自己滚 */
+.app-sider .ant-layout-sider-children {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.app-sider {
+  border-inline-end: 1px solid rgba(5, 5, 5, 0.06);
+}
+
+.app-sider-logo {
+  flex: none;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* 分类与设置子项变多时，只有菜单区滚动；底部留出折叠触发条的 48px */
+.app-sider-menu {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  padding-bottom: 48px;
+}
+
+/* ---- 右侧内容区 ---- */
+
+.app-main {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-header {
+  flex: none;
+  background: transparent;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(5, 5, 5, 0.06);
+}
+
+/* 顶栏固定，只有内容滚动 */
+.app-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px 20px;
 }
 
 /* 居中卡片页（SetupPage / LoginPage 共用），跟随 [data-theme] 切换 */

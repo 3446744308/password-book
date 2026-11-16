@@ -65,8 +65,10 @@ export default function AutoLock() {
       markActive();
     };
 
+    // capture=true：内容区是独立滚动容器，scroll 不冒泡，普通监听收不到；
+    // 捕获阶段可以拦截到任意后代元素的滚动，避免"只在滚动"被误判为空闲
     for (const event of ACTIVITY_EVENTS) {
-      window.addEventListener(event, markActive, { passive: true });
+      window.addEventListener(event, markActive, { passive: true, capture: true });
     }
     document.addEventListener('visibilitychange', onVisibilityChange);
 
@@ -79,7 +81,8 @@ export default function AutoLock() {
 
     return () => {
       for (const event of ACTIVITY_EVENTS) {
-        window.removeEventListener(event, markActive);
+        // 移除时的 capture 必须与添加时一致，否则解绑不掉
+        window.removeEventListener(event, markActive, { capture: true });
       }
       document.removeEventListener('visibilitychange', onVisibilityChange);
       window.clearInterval(timer);
