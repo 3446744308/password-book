@@ -10,10 +10,12 @@ import {
   Input,
   InputNumber,
   Row,
+  Select,
   Space,
   Spin,
   Table,
   Tag,
+  Tooltip,
   Typography,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -33,7 +35,13 @@ import {
   updateConfig,
 } from '../api';
 import { useAuthStore } from '../stores/authStore';
-import { formatBytes, formatTime } from '../utils/format';
+import {
+  auditEventFilterOptions,
+  auditEventMeta,
+  describeAuditDetail,
+  describeAuditIp,
+} from '../utils/audit';
+import { formatBytes, formatRelativeTime, formatTime } from '../utils/format';
 import { humanize } from '../utils/errors';
 import { useNotify } from '../utils/notify';
 import type { AuditItem, BackupResult, Pagination, SystemConfig, SystemHealth } from '../types';
@@ -482,23 +490,51 @@ function AuditTab() {
   }, [load]);
 
   const columns: ColumnsType<AuditItem> = [
-    { title: '时间', dataIndex: 'ts', key: 'ts', width: 180, render: (v: string) => formatTime(v) },
     {
-      title: '事件',
+      title: '时间',
+      dataIndex: 'ts',
+      key: 'ts',
+      width: 190,
+      render: (ts: string) => {
+        const relative = formatRelativeTime(ts);
+        return (
+          <div className="audit-time">
+            <span>{formatTime(ts)}</span>
+            {relative && <span className="audit-time__relative">{relative}</span>}
+          </div>
+        );
+      },
+    },
+    {
+      title: '操作',
       dataIndex: 'event',
       key: 'event',
-      width: 170,
-      render: (v: string) => (
-        <Tag color={v.endsWith('_FAIL') || v === 'LOCKOUT' ? 'red' : 'blue'}>{v}</Tag>
-      ),
+      width: 150,
+      render: (code: string) => {
+        const meta = auditEventMeta(code);
+        // 中文名给人看，原始事件码留在 tooltip 里，排查问题时仍能对上日志文件
+        return (
+          <Tooltip title={`事件码：${code}`}>
+            <Tag color={meta.color}>{meta.label}</Tag>
+          </Tooltip>
+        );
+      },
     },
-    { title: 'IP', dataIndex: 'ip', key: 'ip', width: 130, render: (v: string | null) => v || '-' },
+    {
+      title: '来源',
+      dataIndex: 'ip',
+      key: 'ip',
+      width: 130,
+      render: (ip: string | null) => describeAuditIp(ip),
+    },
     {
       title: '详情',
       dataIndex: 'detail',
       key: 'detail',
       ellipsis: true,
-      render: (v: string | null) => v || '-',
+      render: (detail: string | null, row) => (
+        <span title={detail ?? ''}>{describeAuditDetail(row.event, detail)}</span>
+      ),
     },
   ];
 
@@ -509,13 +545,18 @@ function AuditTab() {
         title="审计日志"
         extra={
           <Space>
-            <Input.Search
-              placeholder="按事件过滤，如 LOGIN_OK"
+            <Select
               allowClear
-              style={{ width: 240 }}
-              onSearch={(value) => {
-                setEvent(value);
-                void load(1, 50, value);
+              showSearch
+              placeholder="筛选操作类型"
+              style={{ width: 200 }}
+              optionFilterProp="label"
+              options={auditEventFilterOptions()}
+              value={event || undefined}
+              onChange={(value?: string) => {
+                const next = value ?? '';
+                setEvent(next);
+                void load(1, 50, next);
               }}
             />
             <Button
@@ -534,6 +575,9 @@ function AuditTab() {
           loading={loading}
           size="small"
           scroll={{ x: 760 }}
+          locale={{
+            emptyText: event ? '没有该类型的操作记录' : '还没有任何操作记录',
+          }}
           pagination={{
             current: pagination.page,
             pageSize: pagination.size,
@@ -545,6 +589,7 @@ function AuditTab() {
         />
         <Typography.Text type="secondary" className="settings-note">
           审计日志最多保留 1000 条（超出后自动轮转），且绝不记录密码明文。
+          鼠标悬停操作标签可看到原始事件码。
         </Typography.Text>
       </Card>
     </div>

@@ -62,7 +62,14 @@ beforeEach(() => {
     uptimeSeconds: 60,
   });
   mocks.listAudit.mockResolvedValue({
-    data: [{ ts: '2026-11-16T09:00:00.000Z', event: 'LOGIN_OK', ip: '127.0.0.1', detail: null }],
+    data: [
+      {
+        ts: '2026-11-16T09:00:00.000Z',
+        event: 'LOGIN_OK',
+        ip: '127.0.0.1',
+        detail: 'jti=01M7HAXV3WH7CZZMWZ0T7QY42W',
+      },
+    ],
     pagination: { page: 1, size: 50, total: 1 },
   });
 });
@@ -118,11 +125,19 @@ describe('分区 → 内容映射', () => {
     expect(await screen.findByText(/备份成功：20261116-120000/)).toBeTruthy();
   });
 
-  it('audit：表格占满宽度并渲染事件', async () => {
+  it('audit：表格占满宽度，事件与详情都已翻成人话', async () => {
     const { container } = renderSection('audit');
 
     await waitFor(() => expect(mocks.listAudit).toHaveBeenCalledTimes(1));
-    expect(await screen.findByText('LOGIN_OK')).toBeTruthy();
+
+    // 展示中文事件名，而不是 LOGIN_OK 这类机器码
+    expect(await screen.findByText('解锁成功')).toBeTruthy();
+    expect(screen.queryByText('LOGIN_OK')).toBeNull();
+    // detail 里的 jti 被翻成「会话 xxx」，ID 已缩短
+    expect(screen.getByText('会话 01M7…Y42W')).toBeTruthy();
+    // 回环地址显示为「本机」
+    expect(screen.getByText('本机')).toBeTruthy();
+
     expect(container.querySelector('.settings-pane--wide')).toBeTruthy();
   });
 

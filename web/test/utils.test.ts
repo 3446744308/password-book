@@ -8,7 +8,7 @@ import {
   entropyLevel,
   generatePassword,
 } from '../src/utils/password';
-import { formatBytes, formatTime } from '../src/utils/format';
+import { formatBytes, formatRelativeTime, formatTime } from '../src/utils/format';
 import { applyFieldErrors, humanize, isApiError } from '../src/utils/errors';
 
 describe('密码生成器', () => {
@@ -134,6 +134,19 @@ describe('格式化工具', () => {
     expect(formatTime(undefined)).toBe('-');
     expect(formatTime('not-a-date')).toBe('not-a-date');
     expect(formatTime('2026-11-16T09:00:00.000Z')).not.toBe('-');
+  });
+
+  it('formatRelativeTime 按跨度给相对时间', () => {
+    const now = new Date('2026-11-16T12:00:00.000Z').getTime();
+    expect(formatRelativeTime('2026-11-16T11:59:40.000Z', now)).toBe('刚刚');
+    expect(formatRelativeTime('2026-11-16T11:45:00.000Z', now)).toBe('15 分钟前');
+    expect(formatRelativeTime('2026-11-16T09:00:00.000Z', now)).toBe('3 小时前');
+    expect(formatRelativeTime('2026-11-14T12:00:00.000Z', now)).toBe('2 天前');
+    // 超过 30 天不再给相对时间，交给绝对时间
+    expect(formatRelativeTime('2026-09-01T12:00:00.000Z', now)).toBe('');
+    // 时钟偏差导致的"未来"时间按刚刚处理
+    expect(formatRelativeTime('2026-11-16T12:05:00.000Z', now)).toBe('刚刚');
+    expect(formatRelativeTime(null, now)).toBe('');
   });
 });
 

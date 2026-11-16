@@ -225,6 +225,18 @@ body {
   font-size: 12px;
 }
 
+/* 审计日志：绝对时间 + 相对时间两行显示，便于扫读 */
+.audit-time {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.35;
+}
+
+.audit-time__relative {
+  font-size: 12px;
+  opacity: 0.6;
+}
+
 /* 窄屏下 .settings-page 的宽度上限由上层内容区决定，这里只需去掉居中的额外留白 */
 @media (max-width: 768px) {
   .settings-page {
