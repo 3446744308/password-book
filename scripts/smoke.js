@@ -1,8 +1,17 @@
 /**
  * 集成冒烟测试：对真实运行的 server 发起完整请求链
- * 用法：node scripts/smoke.js <baseURL>
+ *
+ * 用法：node scripts/smoke.js <baseURL> [--allow-setup]
+ *
+ * ⚠️ 若目标库**尚未初始化**，本脚本会用硬编码的测试主密码（Smoke123456）调用
+ * /auth/setup 把库占下来。为避免误伤真实数据，未初始化时必须显式加 --allow-setup；
+ * 正常情况下请对临时 DATA_DIR 起服务再跑：
+ *   $env:DATA_DIR="$env:TEMP\pwbook-smoke"; node server/src/server.js
+ *   node scripts/smoke.js http://127.0.0.1:3100 --allow-setup
  */
-const base = process.argv[2] || 'http://127.0.0.1:3100';
+const args = process.argv.slice(2);
+const base = args.find((a) => !a.startsWith('--')) || 'http://127.0.0.1:3100';
+const allowSetup = args.includes('--allow-setup');
 
 let passed = 0;
 const failures = [];
@@ -53,9 +62,24 @@ async function main() {
   const initialized = status.body?.data?.initialized;
   check('status.initialized 为布尔', typeof initialized === 'boolean');
 
-  // 3. 初始化（若尚未初始化）
+  // 3. 初始化（若尚未初始化）—— 会把主密码设成测试值，故必须显式授权
   let token;
   if (!initialized) {
+    if (!allowSetup) {
+      console.error(
+        [
+          '',
+          `[smoke] 目标库尚未初始化：${base}`,
+          `[smoke] 继续执行会用测试主密码「${MASTER}」初始化这个库。`,
+          '[smoke] 如果你指向的是自己的真实密码本，请立刻停止，改用临时 DATA_DIR：',
+          '          $env:DATA_DIR = "$env:TEMP\\pwbook-smoke"; node server/src/server.js',
+          '[smoke] 确认目标是一次性数据后，加 --allow-setup 重跑。',
+          '',
+        ].join('\n'),
+      );
+      process.exitCode = 1;
+      return;
+    }
     const setup = await call('/api/v1/auth/setup', {
       method: 'POST',
       body: { masterPassword: MASTER },

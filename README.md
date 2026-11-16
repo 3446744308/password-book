@@ -15,14 +15,22 @@
 npm --prefix server install
 npm --prefix web install
 
-# 2. 启动后端（默认 http://127.0.0.1:3100）
-cd server && npm run dev
-
-# 3. 另开一个终端启动前端（http://localhost:5173，/api 已代理到 3100）
-cd web && npm run dev
+# 2. 一条命令同时启动前端 + 后端
+node scripts/dev.js
 ```
 
-首次打开页面会进入 `/setup` 创建主密码（≥10 位，需同时含字母与数字）。创建后会自动解锁并写入 `data/`。
+打开 **http://localhost:5173** 即可。`scripts/dev.js` 会带 `[server]` / `[web]` 前缀转发两端日志；改动任一端代码都会自动重载（后端 `node --watch`、前端 Vite HMR），按 `Ctrl+C` 一起停止。
+
+> 不想用合并启动、或者想分开看日志时，仍然可以两个终端分别跑：
+>
+> ```bash
+> cd server && npm run dev     # 后端 http://127.0.0.1:3100
+> cd web && npm run dev        # 前端 http://localhost:5173（/api 已代理到 3100）
+> ```
+>
+> 若控制台里的中文显示成乱码，那是 Windows 控制台代码页问题，执行 `chcp 65001` 或改用 Windows Terminal 即可（脚本本身输出的是 UTF-8）。
+
+首次打开页面会进入 `/setup` 创建**你自己的主密码**（≥10 位，需同时含字母与数字）。创建后会自动解锁并写入 `data/`。
 
 **生产部署**：`npm --prefix web run build` 产出 `web/dist`，由 Express 直接托管（SPA 回退已内置），单进程即可运行：
 
@@ -128,7 +136,8 @@ node scripts/scan-plaintext.js --json # 机器可读
 
 | 位置 | 命令 | 说明 |
 | --- | --- | --- |
-| `server/` | `npm run dev` | 启动后端（`--watch` 热重启） |
+| 仓库根 | `node scripts/dev.js` | **一条命令同时启动前后端** |
+| `server/` | `npm run dev` | 只启动后端（`--watch` 热重启） |
 | `server/` | `npm test` | 后端 92 个接口/单元用例 |
 | `server/` | `npm run lint` | ESLint |
 | `server/` | `npm run format` / `format:check` | Prettier 格式化 / 只校验 |
@@ -141,6 +150,15 @@ node scripts/scan-plaintext.js --json # 机器可读
 | `web/` | `npm run lint` | ESLint |
 | `web/` | `npm run format` / `format:check` | Prettier 格式化 / 只校验 |
 | 仓库根 | `node scripts/smoke.js` | 对运行中的服务跑全链路冒烟（32 项断言） |
+
+> ⚠️ `scripts/smoke.js` 在目标库**未初始化**时会用测试主密码 `Smoke123456` 调用 `/auth/setup` 把库占下来。
+> 为防止误伤真实数据，未初始化时必须显式加 `--allow-setup`；对真实密码本请**不要**加这个参数。
+> 推荐做法是对临时数据目录起服务再跑：
+>
+> ```bash
+> $env:DATA_DIR="$env:TEMP\pwbook-smoke"; node server/src/server.js      # PowerShell
+> node scripts/smoke.js http://127.0.0.1:3100 --allow-setup
+> ```
 
 ## 测试
 
