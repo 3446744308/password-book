@@ -13,7 +13,6 @@ import {
   Space,
   Spin,
   Table,
-  Tabs,
   Tag,
   Typography,
 } from 'antd';
@@ -21,10 +20,7 @@ import type { ColumnsType } from 'antd/es/table';
 import {
   CheckCircleTwoTone,
   CloudSyncOutlined,
-  InfoCircleOutlined,
-  LockOutlined,
   ReloadOutlined,
-  SafetyCertificateOutlined,
   SaveOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
@@ -41,6 +37,33 @@ import { formatBytes, formatTime } from '../utils/format';
 import { humanize } from '../utils/errors';
 import { useNotify } from '../utils/notify';
 import type { AuditItem, BackupResult, Pagination, SystemConfig, SystemHealth } from '../types';
+
+/** 设置分区标识，与侧边栏子菜单、路由一一对应 */
+export type SettingsSection = 'master' | 'config' | 'backup' | 'audit' | 'about';
+
+/** 各分区的页头文案 */
+const SECTION_META: Record<SettingsSection, { title: string; description: string }> = {
+  master: {
+    title: '修改主密码',
+    description: '主密码不落盘，修改后所有已登录设备都需要重新解锁。',
+  },
+  config: {
+    title: '系统配置',
+    description: '会话时长、失败锁定策略、主密码强度要求与密码历史保留条数。',
+  },
+  backup: {
+    title: '数据备份',
+    description: '把 data/ 目录整体归档，或查看恢复流程与保管建议。',
+  },
+  audit: {
+    title: '审计日志',
+    description: '登录、查看密码等敏感操作的留痕，最多保留 1000 条。',
+  },
+  about: {
+    title: '关于与健康检查',
+    description: '运行状态、数据目录可写性与安全设计说明。',
+  },
+};
 
 const MASTER_RULES = [
   { required: true, message: '请输入主密码' },
@@ -83,84 +106,35 @@ function RichList({ items, check = false }: { items: ReactNode[]; check?: boolea
 }
 
 /**
- * 系统设置。
+ * 设置功能页。
  *
- * 布局约定（整页一套）：
- * - 页头：标题 + 一句话说明
- * - 主体：单一卡片内「左侧导航 + 右侧内容」，切分区时外框尺寸不变，避免版面跳动
- * - 内容：表单区限制在 .settings-pane（840px）内保持行宽可读；
- *   审计表格用 .settings-pane--wide 占满，避免宽表被压窄
+ * 分区导航由**侧边栏子菜单**承担（见 MainLayout），页面内不再放 Tabs，
+ * 避免两套导航并存。这里只按 section 渲染对应功能区：
+ * - 页头：分区标题 + 一句话说明
+ * - 主体：单张卡片；表单区用 .settings-pane 限宽保持行宽可读，
+ *   审计表格用 .settings-pane--wide 占满
  */
-export default function SettingsPage() {
+export default function SettingsPage({ section }: { section: SettingsSection }) {
   const navigate = useNavigate();
+  const meta = SECTION_META[section];
 
   return (
     <div className="settings-page">
       <Typography.Title level={4} className="settings-title">
-        系统设置
+        {meta.title}
       </Typography.Title>
       <Typography.Paragraph type="secondary" className="settings-subtitle">
-        主密码、会话与安全策略、数据备份与审计记录都在这里管理。
+        {meta.description}
       </Typography.Paragraph>
 
-      <Card className="settings-card" styles={{ body: { padding: 0 } }}>
-        <Tabs
-          tabPosition="left"
-          className="settings-tabs"
-          defaultActiveKey="master"
-          items={[
-            {
-              key: 'master',
-              label: (
-                <Space size={8}>
-                  <SafetyCertificateOutlined />
-                  修改主密码
-                </Space>
-              ),
-              children: <MasterPasswordTab onDone={() => navigate('/login', { replace: true })} />,
-            },
-            {
-              key: 'config',
-              label: (
-                <Space size={8}>
-                  <SaveOutlined />
-                  系统配置
-                </Space>
-              ),
-              children: <ConfigTab />,
-            },
-            {
-              key: 'backup',
-              label: (
-                <Space size={8}>
-                  <CloudSyncOutlined />
-                  数据备份
-                </Space>
-              ),
-              children: <BackupTab />,
-            },
-            {
-              key: 'audit',
-              label: (
-                <Space size={8}>
-                  <InfoCircleOutlined />
-                  审计日志
-                </Space>
-              ),
-              children: <AuditTab />,
-            },
-            {
-              key: 'about',
-              label: (
-                <Space size={8}>
-                  <LockOutlined />
-                  关于与健康检查
-                </Space>
-              ),
-              children: <AboutTab />,
-            },
-          ]}
-        />
+      <Card className="settings-card">
+        {section === 'master' && (
+          <MasterPasswordTab onDone={() => navigate('/login', { replace: true })} />
+        )}
+        {section === 'config' && <ConfigTab />}
+        {section === 'backup' && <BackupTab />}
+        {section === 'audit' && <AuditTab />}
+        {section === 'about' && <AboutTab />}
       </Card>
     </div>
   );

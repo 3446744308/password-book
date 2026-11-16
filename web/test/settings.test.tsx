@@ -4,10 +4,10 @@ import { App as AntdApp } from 'antd';
 import { MemoryRouter } from 'react-router-dom';
 
 /**
- * 系统设置页测试。
+ * 设置功能页测试。
  *
- * 该页刚做过布局重构（横向 Tab 卡片 → 单卡片 + 左侧导航 + 栅格内容），
- * 这里锁住结构与各分区的取数行为，避免以后改样式时把功能改坏。
+ * 导航已上移到侧边栏子菜单，页面只按 section 渲染对应功能区（内部不再有 Tabs）。
+ * 这里锁住「分区 → 内容」的映射与各区取数行为。
  */
 
 const mocks = vi.hoisted(() => ({
@@ -29,6 +29,7 @@ vi.mock('../src/api', () => ({
 }));
 
 import SettingsPage from '../src/pages/SettingsPage';
+import type { SettingsSection } from '../src/pages/SettingsPage';
 
 const CONFIG = {
   lockMinutes: 30,
@@ -39,11 +40,11 @@ const CONFIG = {
   historyKeep: 50,
 };
 
-function renderPage() {
+function renderSection(section: SettingsSection) {
   return render(
     <AntdApp>
       <MemoryRouter>
-        <SettingsPage />
+        <SettingsPage section={section} />
       </MemoryRouter>
     </AntdApp>,
   );
@@ -66,38 +67,24 @@ beforeEach(() => {
   });
 });
 
-describe('系统设置页布局', () => {
-  it('页头 + 单一卡片 + 左侧导航，五个分区入口齐全', () => {
-    const { container } = renderPage();
+describe('分区 → 内容映射', () => {
+  it('master：页头为主密码标题，渲染三个密码字段与右栏说明', () => {
+    const { container } = renderSection('master');
 
-    expect(screen.getByText('系统设置')).toBeTruthy();
-    expect(container.querySelector('.settings-page')).toBeTruthy();
-    // 布局核心：Tab 竖排在卡片内，保证切换分区时外框尺寸不变
-    expect(container.querySelector('.settings-tabs')).toBeTruthy();
-
-    for (const name of [/修改主密码/, /系统配置/, /数据备份/, /审计日志/, /关于与健康检查/]) {
-      expect(screen.getByRole('tab', { name })).toBeTruthy();
-    }
-  });
-
-  it('默认进入「修改主密码」分区', () => {
-    renderPage();
+    expect(screen.getByRole('heading', { name: '修改主密码' })).toBeTruthy();
     expect(screen.getByLabelText('当前主密码')).toBeTruthy();
     expect(screen.getByLabelText('新主密码')).toBeTruthy();
     expect(screen.getByLabelText('确认新主密码')).toBeTruthy();
-    // 右侧说明栏与本分区同屏，避免出现大片空白
     expect(screen.getByText('关于主密码')).toBeTruthy();
+    // 导航交给侧边栏，页面内不应再有 Tabs
+    expect(container.querySelector('.ant-tabs')).toBeNull();
+    expect(container.querySelector('.settings-page')).toBeTruthy();
   });
-});
 
-describe('切到各分区', () => {
-  it('系统配置：拉取配置并按两栏分组渲染，保存后回填', async () => {
-    renderPage();
-    fireEvent.click(screen.getByRole('tab', { name: /系统配置/ }));
+  it('config：拉取配置并按两栏分组渲染，保存后回填', async () => {
+    renderSection('config');
 
     await waitFor(() => expect(mocks.getConfig).toHaveBeenCalledTimes(1));
-
-    // 分组标题
     expect(await screen.findByText('会话与锁定')).toBeTruthy();
     expect(screen.getByText('密码与历史')).toBeTruthy();
 
@@ -113,7 +100,7 @@ describe('切到各分区', () => {
     });
   });
 
-  it('数据备份：点「立即备份」后展示备份结果', async () => {
+  it('backup：点「立即备份」后展示备份结果', async () => {
     mocks.createBackup.mockResolvedValue({
       backupId: '20261116-120000',
       label: 'manual',
@@ -123,23 +110,28 @@ describe('切到各分区', () => {
       createdAt: '2026-11-16T12:00:00.000Z',
     });
 
-    renderPage();
-    fireEvent.click(screen.getByRole('tab', { name: /数据备份/ }));
-
+    renderSection('backup');
     expect(await screen.findByText('恢复与保管建议')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: /立即备份/ }));
 
+    fireEvent.click(screen.getByRole('button', { name: /立即备份/ }));
     await waitFor(() => expect(mocks.createBackup).toHaveBeenCalledTimes(1));
     expect(await screen.findByText(/备份成功：20261116-120000/)).toBeTruthy();
   });
 
-  it('审计日志：表格占满宽度并渲染事件', async () => {
-    const { container } = renderPage();
-    fireEvent.click(screen.getByRole('tab', { name: /审计日志/ }));
+  it('audit：表格占满宽度并渲染事件', async () => {
+    const { container } = renderSection('audit');
 
     await waitFor(() => expect(mocks.listAudit).toHaveBeenCalledTimes(1));
     expect(await screen.findByText('LOGIN_OK')).toBeTruthy();
-    // 宽表用 --wide 不受表单限宽约束
     expect(container.querySelector('.settings-pane--wide')).toBeTruthy();
+  });
+
+  it('about：渲染运行状态与安全说明', async () => {
+    renderSection('about');
+
+    await waitFor(() => expect(mocks.health).toHaveBeenCalledTimes(1));
+    expect(await screen.findByText('运行状态')).toBeTruthy();
+    expect(screen.getByText('安全说明')).toBeTruthy();
+    expect(screen.getByText(/PBKDF2-SHA256/)).toBeTruthy();
   });
 });

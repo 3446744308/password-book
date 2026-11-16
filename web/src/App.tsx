@@ -127,7 +127,13 @@ export default function App() {
             >
               <Route path="/" element={<ListPage />} />
               <Route path="/categories" element={<CategoriesPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
+              {/* 设置分区与侧栏子菜单一一对应；/settings 重定向到第一个分区 */}
+              <Route path="/settings" element={<Navigate to="/settings/master" replace />} />
+              <Route path="/settings/master" element={<SettingsPage section="master" />} />
+              <Route path="/settings/config" element={<SettingsPage section="config" />} />
+              <Route path="/settings/backup" element={<SettingsPage section="backup" />} />
+              <Route path="/settings/audit" element={<SettingsPage section="audit" />} />
+              <Route path="/settings/about" element={<SettingsPage section="about" />} />
               <Route path="*" element={<NotFoundPage />} />
             </Route>
           </Routes>

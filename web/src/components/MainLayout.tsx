@@ -1,14 +1,17 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Layout, Menu, Button, Space, Typography, Tooltip } from 'antd';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   AppstoreOutlined,
+  CloudSyncOutlined,
   FolderOutlined,
+  InfoCircleOutlined,
   LockOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   MoonOutlined,
   SafetyCertificateOutlined,
+  SaveOutlined,
   SettingOutlined,
   StarOutlined,
   SunOutlined,
@@ -20,6 +23,9 @@ import { logout as logoutApi } from '../api';
 import { useNotify } from '../utils/notify';
 
 const { Sider, Header, Content } = Layout;
+
+/** 设置子菜单的父级 key（不是路由，仅用于展开状态） */
+const SETTINGS_GROUP_KEY = 'g-settings';
 
 /** 主框架：侧栏（分类导航）+ 顶栏（主题/锁定）+ 内容区 */
 export default function MainLayout() {
@@ -36,6 +42,16 @@ export default function MainLayout() {
   const toggleTheme = useUIStore((s) => s.toggleTheme);
   const collapsed = useUIStore((s) => s.siderCollapsed);
   const setCollapsed = useUIStore((s) => s.setCollapsed);
+
+  // 展开状态自己维护：进入任何 /settings/* 时自动展开设置子菜单
+  const [openKeys, setOpenKeys] = useState<string[]>([SETTINGS_GROUP_KEY]);
+
+  useEffect(() => {
+    if (!location.pathname.startsWith('/settings')) return;
+    setOpenKeys((prev) =>
+      prev.includes(SETTINGS_GROUP_KEY) ? prev : [...prev, SETTINGS_GROUP_KEY],
+    );
+  }, [location.pathname]);
 
   useEffect(() => {
     void loadCategories();
@@ -78,7 +94,19 @@ export default function MainLayout() {
     },
     { type: 'divider' as const },
     { key: '/categories', icon: <AppstoreOutlined />, label: '分类管理' },
-    { key: '/settings', icon: <SettingOutlined />, label: '系统设置' },
+    {
+      // 设置各分区做成侧栏可展开的子菜单（下拉形式），右侧内容区只承载当前分区
+      key: SETTINGS_GROUP_KEY,
+      icon: <SettingOutlined />,
+      label: '系统设置',
+      children: [
+        { key: '/settings/master', icon: <SafetyCertificateOutlined />, label: '修改主密码' },
+        { key: '/settings/config', icon: <SaveOutlined />, label: '系统配置' },
+        { key: '/settings/backup', icon: <CloudSyncOutlined />, label: '数据备份' },
+        { key: '/settings/audit', icon: <InfoCircleOutlined />, label: '审计日志' },
+        { key: '/settings/about', icon: <LockOutlined />, label: '关于与健康检查' },
+      ],
+    },
   ];
 
   const onSelect = ({ key }: { key: string }) => {
@@ -123,7 +151,14 @@ export default function MainLayout() {
           <LockOutlined style={{ color: '#1677ff' }} />
           {!collapsed && <span>密码本</span>}
         </div>
-        <Menu mode="inline" selectedKeys={[selectedKey]} items={menuItems} onSelect={onSelect} />
+        <Menu
+          mode="inline"
+          selectedKeys={[selectedKey]}
+          items={menuItems}
+          onSelect={onSelect}
+          // 折叠时交给 antd 用弹出层，避免受控 openKeys 与 inlineCollapsed 冲突
+          {...(collapsed ? {} : { openKeys, onOpenChange: setOpenKeys })}
+        />
       </Sider>
 
       <Layout>
