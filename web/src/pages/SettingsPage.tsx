@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import {
   Alert,
   Button,
   Card,
+  Col,
   Descriptions,
   Form,
   Input,
   InputNumber,
-  Progress,
+  Row,
   Space,
   Spin,
   Table,
@@ -17,12 +19,15 @@ import {
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
+  CheckCircleTwoTone,
   CloudSyncOutlined,
   InfoCircleOutlined,
   LockOutlined,
+  ReloadOutlined,
   SafetyCertificateOutlined,
   SaveOutlined,
 } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import {
   changeMaster as changeMasterApi,
   createBackup,
@@ -35,12 +40,20 @@ import { useAuthStore } from '../stores/authStore';
 import { formatBytes, formatTime } from '../utils/format';
 import { humanize } from '../utils/errors';
 import { useNotify } from '../utils/notify';
-import { useNavigate } from 'react-router-dom';
 import type { AuditItem, BackupResult, Pagination, SystemConfig, SystemHealth } from '../types';
 
 const MASTER_RULES = [
   { required: true, message: '请输入主密码' },
   { min: 10, message: '主密码至少 10 个字符' },
+];
+
+/** 「安全说明」固定文案 */
+const SECURITY_NOTES = [
+  '主密码经 PBKDF2-SHA256（31 万次迭代）派生密钥，数据库不存明文。',
+  '条目密码与备注使用 AES-256-GCM 加密后落盘。',
+  '访问令牌仅存内存，刷新令牌为 HttpOnly Cookie。',
+  '登录限速 + 连续失败锁定，查看与复制密码均写入审计日志。',
+  '数据全部保存在本地 data/ 目录，不经过任何第三方服务。',
 ];
 
 interface MasterForm {
@@ -49,71 +62,107 @@ interface MasterForm {
   confirm: string;
 }
 
-/** 系统设置：改主密码 / 系统配置 / 备份 / 审计日志 / 关于 */
+/**
+ * 主题感知的项目符号列表。
+ * 用 Typography 包一层是为了拿到 antd 的 colorText 令牌——裸 <ul> 在暗色模式下
+ * 会沿用浏览器默认黑字，落在深色卡片上不可读。
+ */
+function RichList({ items, check = false }: { items: ReactNode[]; check?: boolean }) {
+  return (
+    <Typography className="settings-list-block">
+      <ul className={check ? 'settings-list settings-list--check' : 'settings-list'}>
+        {items.map((item, index) => (
+          <li key={index}>
+            {check && <CheckCircleTwoTone twoToneColor="#52c41a" className="settings-list__icon" />}
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </Typography>
+  );
+}
+
+/**
+ * 系统设置。
+ *
+ * 布局约定（整页一套）：
+ * - 页头：标题 + 一句话说明
+ * - 主体：单一卡片内「左侧导航 + 右侧内容」，切分区时外框尺寸不变，避免版面跳动
+ * - 内容：表单区限制在 .settings-pane（840px）内保持行宽可读；
+ *   审计表格用 .settings-pane--wide 占满，避免宽表被压窄
+ */
 export default function SettingsPage() {
   const navigate = useNavigate();
 
   return (
-    <Space direction="vertical" size={16} style={{ width: '100%' }}>
-      <Typography.Title level={4} style={{ margin: 0 }}>
+    <div className="settings-page">
+      <Typography.Title level={4} className="settings-title">
         系统设置
       </Typography.Title>
-      <Tabs
-        defaultActiveKey="master"
-        items={[
-          {
-            key: 'master',
-            label: (
-              <Space>
-                <SafetyCertificateOutlined />
-                修改主密码
-              </Space>
-            ),
-            children: <MasterPasswordTab onDone={() => navigate('/login', { replace: true })} />,
-          },
-          {
-            key: 'config',
-            label: (
-              <Space>
-                <SaveOutlined />
-                系统配置
-              </Space>
-            ),
-            children: <ConfigTab />,
-          },
-          {
-            key: 'backup',
-            label: (
-              <Space>
-                <CloudSyncOutlined />
-                数据备份
-              </Space>
-            ),
-            children: <BackupTab />,
-          },
-          {
-            key: 'audit',
-            label: (
-              <Space>
-                <InfoCircleOutlined />
-                审计日志
-              </Space>
-            ),
-            children: <AuditTab />,
-          },
-          {
-            key: 'about',
-            label: (
-              <Space>
-                <LockOutlined />
-                关于 / 健康检查
-              </Space>
-            ),
-            children: <AboutTab />,
-          },
-        ]}
-      />
-    </Space>
+      <Typography.Paragraph type="secondary" className="settings-subtitle">
+        主密码、会话与安全策略、数据备份与审计记录都在这里管理。
+      </Typography.Paragraph>
+
+      <Card className="settings-card" styles={{ body: { padding: 0 } }}>
+        <Tabs
+          tabPosition="left"
+          className="settings-tabs"
+          defaultActiveKey="master"
+          items={[
+            {
+              key: 'master',
+              label: (
+                <Space size={8}>
+                  <SafetyCertificateOutlined />
+                  修改主密码
+                </Space>
+              ),
+              children: <MasterPasswordTab onDone={() => navigate('/login', { replace: true })} />,
+            },
+            {
+              key: 'config',
+              label: (
+                <Space size={8}>
+                  <SaveOutlined />
+                  系统配置
+                </Space>
+              ),
+              children: <ConfigTab />,
+            },
+            {
+              key: 'backup',
+              label: (
+                <Space size={8}>
+                  <CloudSyncOutlined />
+                  数据备份
+                </Space>
+              ),
+              children: <BackupTab />,
+            },
+            {
+              key: 'audit',
+              label: (
+                <Space size={8}>
+                  <InfoCircleOutlined />
+                  审计日志
+                </Space>
+              ),
+              children: <AuditTab />,
+            },
+            {
+              key: 'about',
+              label: (
+                <Space size={8}>
+                  <LockOutlined />
+                  关于与健康检查
+                </Space>
+              ),
+              children: <AboutTab />,
+            },
+          ]}
+        />
+      </Card>
+    </div>
   );
 }
 
@@ -152,57 +201,87 @@ function MasterPasswordTab({ onDone }: { onDone: () => void }) {
   };
 
   return (
-    <Card style={{ maxWidth: 560 }}>
-      <Alert
-        type="warning"
-        showIcon
-        style={{ marginBottom: 16 }}
-        message="修改主密码会立即使当前登录失效"
-        description="dev 模式下仅重新封装数据加密密钥（秒级完成）；strict 模式下会全量重加密所有条目，条目越多耗时越长。"
-      />
-      <Form form={form} layout="vertical" onFinish={onFinish} requiredMark={false}>
-        <Form.Item name="currentPassword" label="当前主密码" rules={MASTER_RULES}>
-          <Input.Password placeholder="请输入当前主密码" autoComplete="current-password" />
-        </Form.Item>
-        <Form.Item
-          name="newPassword"
-          label="新主密码"
-          rules={[
-            ...MASTER_RULES,
-            {
-              validator(_, value: string) {
-                if (!value) return Promise.resolve();
-                if (!/[A-Za-z]/.test(value) || !/[0-9]/.test(value)) {
-                  return Promise.reject(new Error('新主密码需同时包含字母和数字'));
-                }
-                return Promise.resolve();
-              },
-            },
-          ]}
-        >
-          <Input.Password placeholder="至少 10 位，含字母与数字" autoComplete="new-password" />
-        </Form.Item>
-        <Form.Item
-          name="confirm"
-          label="确认新主密码"
-          dependencies={['newPassword']}
-          rules={[
-            { required: true, message: '请再次输入新主密码' },
-            ({ getFieldValue }) => ({
-              validator(_, value: string) {
-                if (!value || getFieldValue('newPassword') === value) return Promise.resolve();
-                return Promise.reject(new Error('两次输入的新主密码不一致'));
-              },
-            }),
-          ]}
-        >
-          <Input.Password placeholder="再次输入新主密码" autoComplete="new-password" />
-        </Form.Item>
-        <Button type="primary" danger htmlType="submit" loading={submitting}>
-          修改主密码
-        </Button>
-      </Form>
-    </Card>
+    <div className="settings-pane">
+      <Row gutter={[24, 24]}>
+        <Col xs={24} lg={14}>
+          <Alert
+            type="warning"
+            showIcon
+            message="修改主密码会立即使当前登录失效"
+            description="所有已签发的访问令牌都会作废，需要用新主密码重新解锁；已保存的条目数据不受影响。"
+            className="settings-alert"
+          />
+          <Form
+            form={form}
+            layout="vertical"
+            onFinish={onFinish}
+            requiredMark={false}
+            className="settings-form"
+          >
+            <Form.Item name="currentPassword" label="当前主密码" rules={MASTER_RULES}>
+              <Input.Password placeholder="请输入当前主密码" autoComplete="current-password" />
+            </Form.Item>
+
+            <Form.Item
+              name="newPassword"
+              label="新主密码"
+              rules={[
+                ...MASTER_RULES,
+                {
+                  validator(_, value: string) {
+                    if (!value) return Promise.resolve();
+                    if (!/[A-Za-z]/.test(value) || !/[0-9]/.test(value)) {
+                      return Promise.reject(new Error('新主密码需同时包含字母和数字'));
+                    }
+                    return Promise.resolve();
+                  },
+                },
+              ]}
+            >
+              <Input.Password placeholder="至少 10 位，含字母与数字" autoComplete="new-password" />
+            </Form.Item>
+
+            <Form.Item
+              name="confirm"
+              label="确认新主密码"
+              dependencies={['newPassword']}
+              rules={[
+                { required: true, message: '请再次输入新主密码' },
+                ({ getFieldValue }) => ({
+                  validator(_, value: string) {
+                    if (!value || getFieldValue('newPassword') === value) return Promise.resolve();
+                    return Promise.reject(new Error('两次输入的新主密码不一致'));
+                  },
+                }),
+              ]}
+            >
+              <Input.Password placeholder="再次输入新主密码" autoComplete="new-password" />
+            </Form.Item>
+
+            <div className="settings-actions">
+              <Button type="primary" danger htmlType="submit" loading={submitting}>
+                修改主密码
+              </Button>
+            </div>
+          </Form>
+        </Col>
+
+        <Col xs={24} lg={10}>
+          <Card size="small" title="关于主密码">
+            <RichList
+              items={[
+                '主密码不落盘，库里只保存校验值（PBKDF2-SHA256，31 万次迭代）。',
+                '忘记主密码无法找回，建议离线记录在只有你能取到的地方。',
+                <>
+                  <Typography.Text code>dev</Typography.Text> 模式只重新封装数据密钥（秒级完成）；
+                  <Typography.Text code>strict</Typography.Text> 模式会全量重加密所有条目。
+                </>,
+              ]}
+            />
+          </Card>
+        </Col>
+      </Row>
+    </div>
   );
 }
 
@@ -241,54 +320,87 @@ function ConfigTab() {
     }
   };
 
-  if (loading) return <Spin />;
+  if (loading) {
+    return (
+      <div className="settings-pane">
+        <Spin />
+      </div>
+    );
+  }
 
   return (
-    <Card style={{ maxWidth: 560 }}>
-      <Form form={form} layout="vertical" onFinish={onFinish}>
-        <Form.Item
-          name="lockMinutes"
-          label="令牌有效期（分钟）"
-          tooltip="超过该时长未操作需重新解锁"
-          rules={[{ required: true, message: '请输入' }]}
-        >
-          <InputNumber min={1} max={1440} style={{ width: '100%' }} />
-        </Form.Item>
-        <Form.Item
-          name="failedAttempts"
-          label="允许连续失败次数"
-          tooltip="达到上限后锁定账户"
-          rules={[{ required: true, message: '请输入' }]}
-        >
-          <InputNumber min={3} max={10} style={{ width: '100%' }} />
-        </Form.Item>
-        <Form.Item
-          name="lockMinutesAfterBan"
-          label="锁定时长（分钟）"
-          rules={[{ required: true, message: '请输入' }]}
-        >
-          <InputNumber min={1} max={1440} style={{ width: '100%' }} />
-        </Form.Item>
-        <Form.Item
-          name="minPasswordLength"
-          label="主密码最小长度"
-          tooltip="仅影响新设主密码，已存在主密码不受影响"
-          rules={[{ required: true, message: '请输入' }]}
-        >
-          <InputNumber min={10} max={32} style={{ width: '100%' }} />
-        </Form.Item>
-        <Form.Item
-          name="historyKeep"
-          label="密码历史保留条数"
-          rules={[{ required: true, message: '请输入' }]}
-        >
-          <InputNumber min={10} max={500} style={{ width: '100%' }} />
-        </Form.Item>
-        <Button type="primary" htmlType="submit" loading={saving} icon={<SaveOutlined />}>
-          保存配置
-        </Button>
+    <div className="settings-pane">
+      <Form form={form} layout="vertical" onFinish={onFinish} className="settings-form">
+        <Card size="small" title="会话与锁定" className="settings-group">
+          <Row gutter={16}>
+            <Col xs={24} md={8}>
+              <Form.Item
+                name="lockMinutes"
+                label="会话时长（分钟）"
+                tooltip="访问令牌的实际有效期；改动只影响之后新签发的令牌"
+                rules={[{ required: true, message: '请输入' }]}
+              >
+                <InputNumber min={1} max={1440} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={8}>
+              <Form.Item
+                name="failedAttempts"
+                label="允许连续失败次数"
+                tooltip="达到上限后锁定账户"
+                rules={[{ required: true, message: '请输入' }]}
+              >
+                <InputNumber min={3} max={10} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={8}>
+              <Form.Item
+                name="lockMinutesAfterBan"
+                label="锁定时长（分钟）"
+                tooltip="连续失败达到上限后，需要等待多久才能再次尝试"
+                rules={[{ required: true, message: '请输入' }]}
+              >
+                <InputNumber min={1} max={1440} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+        </Card>
+
+        <Card size="small" title="密码与历史" className="settings-group">
+          <Row gutter={16}>
+            <Col xs={24} md={8}>
+              <Form.Item
+                name="minPasswordLength"
+                label="主密码最小长度"
+                tooltip="仅影响新设主密码，已存在主密码不受影响"
+                rules={[{ required: true, message: '请输入' }]}
+              >
+                <InputNumber min={10} max={32} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={8}>
+              <Form.Item
+                name="historyKeep"
+                label="密码历史保留条数"
+                tooltip="超出后丢弃最旧的版本"
+                rules={[{ required: true, message: '请输入' }]}
+              >
+                <InputNumber min={10} max={500} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+        </Card>
+
+        <div className="settings-actions">
+          <Button type="primary" htmlType="submit" loading={saving} icon={<SaveOutlined />}>
+            保存配置
+          </Button>
+          <Button icon={<ReloadOutlined />} onClick={() => void load()}>
+            重新加载
+          </Button>
+        </div>
       </Form>
-    </Card>
+    </div>
   );
 }
 
@@ -313,40 +425,56 @@ function BackupTab() {
   };
 
   return (
-    <Space direction="vertical" size={16} style={{ width: '100%' }}>
-      <Card style={{ maxWidth: 640 }}>
-        <Typography.Paragraph type="secondary">
-          将 <Typography.Text code>data/</Typography.Text> 整个目录归档到{' '}
-          <Typography.Text code>data/backups/&lt;时间戳&gt;/</Typography.Text>
-          ，排除备份自身与进程锁文件。建议定期手动备份，并将归档复制到其他存储介质。
-        </Typography.Paragraph>
-        <Button type="primary" icon={<CloudSyncOutlined />} loading={busy} onClick={doBackup}>
-          立即备份
-        </Button>
-        {last && (
-          <Alert
-            type="success"
-            showIcon
-            style={{ marginTop: 16 }}
-            message={`备份成功：${last.backupId}`}
-            description={
-              <Descriptions column={1} size="small">
-                <Descriptions.Item label="路径">{last.path}</Descriptions.Item>
-                <Descriptions.Item label="文件数">{last.fileCount}</Descriptions.Item>
-                <Descriptions.Item label="大小">{formatBytes(last.sizeBytes)}</Descriptions.Item>
-                <Descriptions.Item label="时间">{formatTime(last.createdAt)}</Descriptions.Item>
-              </Descriptions>
-            }
-          />
-        )}
-      </Card>
-      <Alert
-        type="info"
-        showIcon
-        message="恢复方法"
-        description="停止服务 → 用备份目录内容整体覆盖 data/ → 重新启动服务。恢复后所有旧访问令牌仍然有效（JWT 密钥一并备份）。"
-      />
-    </Space>
+    <div className="settings-pane">
+      <Row gutter={[24, 24]}>
+        <Col xs={24} lg={14}>
+          <Card size="small" title="立即备份">
+            <Typography.Paragraph type="secondary">
+              将 <Typography.Text code>data/</Typography.Text> 整个目录归档到{' '}
+              <Typography.Text code>data/backups/&lt;时间戳&gt;/</Typography.Text>
+              ，自动排除备份自身与进程锁文件。
+            </Typography.Paragraph>
+            <Button type="primary" icon={<CloudSyncOutlined />} loading={busy} onClick={doBackup}>
+              立即备份
+            </Button>
+            {last && (
+              <Alert
+                type="success"
+                showIcon
+                className="settings-group"
+                message={`备份成功：${last.backupId}`}
+                description={
+                  <Descriptions column={1} size="small">
+                    <Descriptions.Item label="路径">{last.path}</Descriptions.Item>
+                    <Descriptions.Item label="文件数">{last.fileCount}</Descriptions.Item>
+                    <Descriptions.Item label="大小">
+                      {formatBytes(last.sizeBytes)}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="时间">{formatTime(last.createdAt)}</Descriptions.Item>
+                  </Descriptions>
+                }
+              />
+            )}
+          </Card>
+        </Col>
+
+        <Col xs={24} lg={10}>
+          <Card size="small" title="恢复与保管建议">
+            <RichList
+              items={[
+                '恢复：停服 → 用备份目录内容整体覆盖 data/ → 重新启动。',
+                <>
+                  <Typography.Text code>jwt.secret</Typography.Text>{' '}
+                  一并恢复时旧令牌仍然有效；只覆盖业务数据则需重新解锁。
+                </>,
+                '备份目录同样含密钥材料，请不要放进任何第三方云同步目录。',
+                '建议定期手动备份，并复制到其它存储介质。',
+              ]}
+            />
+          </Card>
+        </Col>
+      </Row>
+    </div>
   );
 }
 
@@ -401,43 +529,51 @@ function AuditTab() {
   ];
 
   return (
-    <Card
-      title="审计日志"
-      extra={
-        <Space>
-          <Input.Search
-            placeholder="按事件过滤，如 LOGIN_OK"
-            allowClear
-            style={{ width: 260 }}
-            onSearch={(value) => {
-              setEvent(value);
-              void load(1, 50, value);
-            }}
-          />
-          <Button onClick={() => void load(pagination.page, pagination.size, event)}>刷新</Button>
-        </Space>
-      }
-    >
-      <Table<AuditItem>
-        rowKey={(row) => `${row.ts}-${row.event}-${row.detail ?? ''}`}
-        columns={columns}
-        dataSource={data}
-        loading={loading}
+    <div className="settings-pane settings-pane--wide">
+      <Card
         size="small"
-        scroll={{ x: 760 }}
-        pagination={{
-          current: pagination.page,
-          pageSize: pagination.size,
-          total: pagination.total,
-          showSizeChanger: false,
-          showTotal: (total) => `共 ${total} 条`,
-          onChange: (page, size) => void load(page, size || 50, event),
-        }}
-      />
-      <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-        审计日志最多保留 1000 条（超出后自动轮转），且绝不记录密码明文。
-      </Typography.Text>
-    </Card>
+        title="审计日志"
+        extra={
+          <Space>
+            <Input.Search
+              placeholder="按事件过滤，如 LOGIN_OK"
+              allowClear
+              style={{ width: 240 }}
+              onSearch={(value) => {
+                setEvent(value);
+                void load(1, 50, value);
+              }}
+            />
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={() => void load(pagination.page, pagination.size, event)}
+            >
+              刷新
+            </Button>
+          </Space>
+        }
+      >
+        <Table<AuditItem>
+          rowKey={(row) => `${row.ts}-${row.event}-${row.detail ?? ''}`}
+          columns={columns}
+          dataSource={data}
+          loading={loading}
+          size="small"
+          scroll={{ x: 760 }}
+          pagination={{
+            current: pagination.page,
+            pageSize: pagination.size,
+            total: pagination.total,
+            showSizeChanger: false,
+            showTotal: (total) => `共 ${total} 条`,
+            onChange: (page, size) => void load(page, size || 50, event),
+          }}
+        />
+        <Typography.Text type="secondary" className="settings-note">
+          审计日志最多保留 1000 条（超出后自动轮转），且绝不记录密码明文。
+        </Typography.Text>
+      </Card>
+    </div>
   );
 }
 
@@ -463,47 +599,59 @@ function AboutTab() {
     void load();
   }, [load]);
 
-  if (loading) return <Spin />;
+  if (loading) {
+    return (
+      <div className="settings-pane">
+        <Spin />
+      </div>
+    );
+  }
 
   return (
-    <Space direction="vertical" size={16} style={{ width: '100%' }}>
-      <Card style={{ maxWidth: 640 }}>
-        {info && (
-          <Descriptions column={1} size="small" bordered>
-            <Descriptions.Item label="状态">
-              <Tag color={info.status === 'ok' ? 'success' : 'error'}>{info.status}</Tag>
-            </Descriptions.Item>
-            <Descriptions.Item label="应用版本">{info.version}</Descriptions.Item>
-            <Descriptions.Item label="数据结构版本">v{info.schemaVersion}</Descriptions.Item>
-            <Descriptions.Item label="已初始化">{info.initialized ? '是' : '否'}</Descriptions.Item>
-            <Descriptions.Item label="数据目录可写">
-              {info.dataDirWritable ? (
-                <Tag color="success">可写</Tag>
-              ) : (
-                <Tag color="error">不可写（将无法保存数据）</Tag>
-              )}
-            </Descriptions.Item>
-            <Descriptions.Item label="运行时长">
-              {Math.floor(info.uptimeSeconds / 3600)} 小时{' '}
-              {Math.floor((info.uptimeSeconds % 3600) / 60)} 分钟
-            </Descriptions.Item>
-          </Descriptions>
-        )}
-        <Button style={{ marginTop: 16 }} onClick={() => void load()}>
-          重新检查
-        </Button>
-      </Card>
+    <div className="settings-pane">
+      <Row gutter={[24, 24]}>
+        <Col xs={24} lg={12}>
+          <Card
+            size="small"
+            title="运行状态"
+            extra={
+              <Button size="small" icon={<ReloadOutlined />} onClick={() => void load()}>
+                重新检查
+              </Button>
+            }
+          >
+            {info && (
+              <Descriptions column={1} size="small">
+                <Descriptions.Item label="状态">
+                  <Tag color={info.status === 'ok' ? 'success' : 'error'}>{info.status}</Tag>
+                </Descriptions.Item>
+                <Descriptions.Item label="应用版本">{info.version}</Descriptions.Item>
+                <Descriptions.Item label="数据结构版本">v{info.schemaVersion}</Descriptions.Item>
+                <Descriptions.Item label="已初始化">
+                  {info.initialized ? '是' : '否'}
+                </Descriptions.Item>
+                <Descriptions.Item label="数据目录可写">
+                  {info.dataDirWritable ? (
+                    <Tag color="success">可写</Tag>
+                  ) : (
+                    <Tag color="error">不可写（将无法保存数据）</Tag>
+                  )}
+                </Descriptions.Item>
+                <Descriptions.Item label="运行时长">
+                  {Math.floor(info.uptimeSeconds / 3600)} 小时{' '}
+                  {Math.floor((info.uptimeSeconds % 3600) / 60)} 分钟
+                </Descriptions.Item>
+              </Descriptions>
+            )}
+          </Card>
+        </Col>
 
-      <Card style={{ maxWidth: 640 }} title="安全说明">
-        <Progress percent={100} showInfo={false} strokeColor="#52c41a" />
-        <ul style={{ paddingLeft: 20, margin: 0, lineHeight: 2 }}>
-          <li>主密码经 PBKDF2-SHA256（31 万次迭代）派生密钥，数据库不存明文。</li>
-          <li>条目密码与备注使用 AES-256-GCM 加密后落盘。</li>
-          <li>访问令牌仅存内存，刷新令牌为 HttpOnly Cookie。</li>
-          <li>登录限速 + 连续失败锁定，密码查看与复制均写入审计日志。</li>
-          <li>数据全部保存在本地 data/ 目录，不经过任何第三方服务。</li>
-        </ul>
-      </Card>
-    </Space>
+        <Col xs={24} lg={12}>
+          <Card size="small" title="安全说明">
+            <RichList items={SECURITY_NOTES} check />
+          </Card>
+        </Col>
+      </Row>
+    </div>
   );
 }

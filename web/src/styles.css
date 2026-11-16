@@ -45,3 +45,98 @@ body {
 .ant-table-tbody .ant-btn-text {
   padding-inline: 4px;
 }
+
+/* ===== 系统设置页 ===== */
+
+/* 页面宽度上限 + 居中，避免宽屏下内容贴着左侧 */
+.settings-page {
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+.settings-title {
+  margin-bottom: 4px !important;
+}
+
+.settings-subtitle {
+  margin-bottom: 16px !important;
+}
+
+/* 左侧导航与内容区的留白；外框尺寸固定，切分区时不跳动 */
+.settings-tabs .ant-tabs-nav {
+  padding: 12px 8px;
+  min-width: 190px;
+}
+
+.settings-tabs .ant-tabs-tabpane {
+  padding: 20px 24px 24px;
+}
+
+/* 表单区限宽，保持行宽可读；审计表格等宽内容用 --wide 占满 */
+.settings-pane {
+  max-width: 840px;
+}
+
+.settings-pane--wide {
+  max-width: none;
+}
+
+.settings-form {
+  margin-top: 16px;
+}
+
+.settings-group {
+  margin-bottom: 16px;
+}
+
+.settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.settings-list-block {
+  display: block;
+}
+
+.settings-list {
+  margin: 0;
+  padding-left: 20px;
+  line-height: 1.9;
+}
+
+.settings-list--check {
+  list-style: none;
+  padding-left: 0;
+}
+
+.settings-list--check li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.settings-list__icon {
+  flex: none;
+  margin-top: 5px;
+}
+
+.settings-note {
+  display: block;
+  margin-top: 12px;
+  font-size: 12px;
+}
+
+/* 窄屏收紧留白，避免左导航把内容挤扁 */
+@media (max-width: 768px) {
+  .settings-tabs .ant-tabs-nav {
+    min-width: 0;
+    padding: 8px 4px;
+  }
+
+  .settings-tabs .ant-tabs-tabpane {
+    padding: 16px 12px;
+  }
+}
