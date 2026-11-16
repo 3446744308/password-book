@@ -119,6 +119,39 @@ body {
   padding-inline: 4px;
 }
 
+/* ===== 条目新建/编辑表单 ===== */
+
+/* 分区之间留白，标题用左侧色条做视觉分组 */
+.entry-form-section + .entry-form-section {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(5, 5, 5, 0.06);
+}
+
+.entry-form-section__title {
+  margin-bottom: 12px;
+  padding-left: 8px;
+  border-left: 3px solid #1677ff;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* 字段下方的辅助说明（密码提示、常用标签前缀） */
+.entry-form-hint {
+  font-size: 12px;
+  opacity: 0.65;
+}
+
+/* 常用标签快捷区：与上面的标签输入框紧邻，靠 extra 自然排布 */
+.entry-form-presets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
 /* ===== 系统设置页 ===== */
 
 /* 页面宽度上限 + 居中，避免宽屏下内容贴着左侧 */

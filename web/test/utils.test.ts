@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest';
 import {
   CHARSETS,
   buildPool,
+  describePasswordStrength,
   estimateEntropy,
   entropyLevel,
   generatePassword,
@@ -76,6 +77,47 @@ describe('熵值估算', () => {
     expect(entropyLevel(60)).toBe('medium');
     expect(entropyLevel(59)).toBe('weak');
     expect(entropyLevel(0)).toBe('weak');
+  });
+});
+
+describe('已有密码的强度反馈', () => {
+  it('空值返回 0 且为弱', () => {
+    expect(describePasswordStrength('')).toEqual({ bits: 0, level: 'weak' });
+  });
+
+  it('按实际用到的字符类别计算池大小', () => {
+    // 纯小写：池 24 → log2(24) × 10 ≈ 46
+    expect(describePasswordStrength('abcdefghij').bits).toBe(
+      Math.round(Math.log2(CHARSETS.lower.length) * 10),
+    );
+    // 纯数字：池 8 → 3 × 8 = 24
+    expect(describePasswordStrength('12345678').bits).toBe(24);
+  });
+
+  it('四类字符齐全时判为强', () => {
+    const result = describePasswordStrength('Abcdef1234!@#$');
+    expect(result.level).toBe('strong');
+    expect(result.bits).toBeGreaterThanOrEqual(80);
+  });
+
+  it('中等强度落在 60-79 区间', () => {
+    // 小写 + 数字：池 = 25 + 8 = 33 → log2(33) × 12 ≈ 61
+    const value = 'abcdef123456';
+    const expected = Math.round(
+      Math.log2(CHARSETS.lower.length + CHARSETS.digit.length) * value.length,
+    );
+    const result = describePasswordStrength(value);
+    expect(result.bits).toBe(expected);
+    expect(result.bits).toBeGreaterThanOrEqual(60);
+    expect(result.bits).toBeLessThan(80);
+    expect(result.level).toBe('medium');
+  });
+
+  it('分级与 entropyLevel 保持一致', () => {
+    for (const value of ['a', 'abcdefghij', 'abcdef123456', 'Abcdef1234!@#$']) {
+      const { bits, level } = describePasswordStrength(value);
+      expect(level).toBe(entropyLevel(bits));
+    }
   });
 });
 

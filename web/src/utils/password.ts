@@ -80,3 +80,27 @@ export function entropyLevel(bits: number): 'strong' | 'medium' | 'weak' {
   if (bits >= 60) return 'medium';
   return 'weak';
 }
+
+/**
+ * 依据**实际字符组成**估算已有密码的强度，用于录入时的即时反馈。
+ *
+ * 与 estimateEntropy 的区别：后者按"选中的字符类型"预估一个待生成密码的强度，
+ * 这里看的是用户已经敲进去的那串字符实际用到了哪几类。
+ * 依然只是量级提示，不含常见弱口令字典与重复模式检测。
+ */
+export function describePasswordStrength(value: string): {
+  bits: number;
+  level: 'strong' | 'medium' | 'weak';
+} {
+  if (!value) return { bits: 0, level: 'weak' };
+
+  let poolSize = 0;
+  if (/[a-z]/.test(value)) poolSize += CHARSETS.lower.length;
+  if (/[A-Z]/.test(value)) poolSize += CHARSETS.upper.length;
+  if (/[0-9]/.test(value)) poolSize += CHARSETS.digit.length;
+  if (/[^A-Za-z0-9]/.test(value)) poolSize += CHARSETS.symbol.length;
+
+  if (poolSize === 0) return { bits: 0, level: 'weak' };
+  const bits = Math.round(Math.log2(poolSize) * value.length);
+  return { bits, level: entropyLevel(bits) };
+}
