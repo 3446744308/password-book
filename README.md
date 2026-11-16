@@ -145,7 +145,7 @@ node scripts/scan-plaintext.js --json # 机器可读
 | `server/` | `npm run scan` | 明文扫描：断言 `data/` 无明文密码字段 |
 | `web/` | `npm run dev` | Vite 开发服务器 |
 | `web/` | `npm run build` | 类型检查 + 生产构建 |
-| `web/` | `npm test` | 前端 28 个单元 + 组件用例 |
+| `web/` | `npm test` | 前端 40 个单元/组件/契约/守卫用例 |
 | `web/` | `npm run typecheck` | 类型检查（含测试文件） |
 | `web/` | `npm run lint` | ESLint |
 | `web/` | `npm run format` / `format:check` | Prettier 格式化 / 只校验 |
@@ -163,9 +163,11 @@ node scripts/scan-plaintext.js --json # 机器可读
 ## 测试
 
 - **后端（92 个用例）**：Vitest + 真实 HTTP 请求。覆盖加解密（含密文篡改、错误密钥）、KDF/verifier、JWT 篡改与过期、ULID；原子写与 50 路并发写队列；登录限速与 5 次失败锁定；29 个端点的正常/参数非法/未认证/不存在四类路径；会话生命周期（登出/刷新/换主密码后旧令牌失效）；日志落盘与脱敏；明文扫描器自身的 10 个用例。每个用例自建临时 `data/` 目录并在结束时删除。
-- **前端（28 个用例）**：Vitest + jsdom + `@testing-library/react`。
+- **前端（40 个用例）**：Vitest + jsdom + `@testing-library/react`。
   - 纯逻辑：密码生成（拒绝采样无取模偏差、排除易混淆字符、熵值分级）、时间/体积格式化、错误文案与表单回填。
   - 组件：`SecretField`（默认掩码、点击才 reveal、失焦/切后台立即掩码、30 秒自动掩码、复制路径）、`PasswordGenerator`（默认 20 位、回传、熵值标签）、`AutoLock`（空闲超时锁定、未超时不锁、未登录不动作）。
+  - **API 契约**：用 axios 自定义 adapter 伪造响应，锁死「信封只解包一次」——辅助函数返回 `{data, pagination}`，取 `.data` 的职责只在 api 模块。曾经多剥一层导致所有接口返回 `undefined`。
+  - **App 级路由守卫**：未初始化时在 `/setup` 必须渲染表单（防回环重定向白屏）、`/login` 引导到 `/setup`、已初始化停在 `/setup` 跳 `/login`、后端不可达不白屏。
   - 测试文件也参与类型检查：`web/tsconfig.test.json`，`npm run typecheck` 一并跑。
 
 > 提示：antd 的 `Button` 会给两个汉字之间自动插入空格（「取 消」），组件测试里断言按钮文案时用

@@ -89,31 +89,34 @@ instance.interceptors.response.use(
   },
 );
 
+/**
+ * 响应拦截器已把 axios 的响应解成**信封本身**（`{ data, pagination? }`），
+ * 所以这里的辅助函数只做类型标注，**绝不能再取一次 `.data`**——
+ * 多剥一层的后果是所有接口都返回 undefined（曾导致「创建主密码」报
+ * Cannot read properties of undefined (reading 'accessToken')）。
+ * 取 `.data` 的职责统一留在各 api 模块。
+ */
+async function unwrapEnvelope<T>(request: Promise<unknown>): Promise<T> {
+  return (await request) as T;
+}
+
 /** GET：返回信封（data + pagination） */
-export async function httpGet<T>(url: string, params?: Record<string, unknown>): Promise<T> {
-  const res = (await instance.get(url, { params })) as unknown as { data: T };
-  return res.data;
+export function httpGet<T>(url: string, params?: Record<string, unknown>): Promise<T> {
+  return unwrapEnvelope<T>(instance.get(url, { params }));
 }
 
 /** POST：返回信封 */
-export async function httpPost<T>(
-  url: string,
-  body?: unknown,
-  config?: AxiosRequestConfig,
-): Promise<T> {
-  const res = (await instance.post(url, body, config)) as unknown as { data: T };
-  return res.data;
+export function httpPost<T>(url: string, body?: unknown, config?: AxiosRequestConfig): Promise<T> {
+  return unwrapEnvelope<T>(instance.post(url, body, config));
 }
 
 /** PUT/PATCH：返回信封 */
-export async function httpPut<T>(url: string, body?: unknown): Promise<T> {
-  const res = (await instance.put(url, body)) as unknown as { data: T };
-  return res.data;
+export function httpPut<T>(url: string, body?: unknown): Promise<T> {
+  return unwrapEnvelope<T>(instance.put(url, body));
 }
 
-export async function httpPatch<T>(url: string, body?: unknown): Promise<T> {
-  const res = (await instance.patch(url, body)) as unknown as { data: T };
-  return res.data;
+export function httpPatch<T>(url: string, body?: unknown): Promise<T> {
+  return unwrapEnvelope<T>(instance.patch(url, body));
 }
 
 /** DELETE：204 无响应体 */
@@ -122,9 +125,8 @@ export async function httpDelete(url: string): Promise<void> {
 }
 
 /** DELETE：返回 200 信封（部分 DELETE 端点带响应体，如分类删除） */
-export async function httpDeleteData<T>(url: string): Promise<T> {
-  const res = (await instance.delete(url)) as unknown as { data: T };
-  return res.data;
+export function httpDeleteData<T>(url: string): Promise<T> {
+  return unwrapEnvelope<T>(instance.delete(url));
 }
 
 export type { Envelope };
