@@ -2,7 +2,7 @@
 
 | 项目 | 内容 |
 | --- | --- |
-| 文档版本 | v1.0 |
+| 文档版本 | v1.1 |
 | 编写日期 | 2026-11-16 |
 | API 版本 | `v1`（Base URL：`/api/v1`） |
 | 面向对象 | Web 前端（Ant Design）、未来手机 App、其他任何客户端 |
@@ -81,7 +81,9 @@ curl -X POST http://localhost:3100/api/v1/entries \
 2. `POST /auth/login` 提交主密码，换取 `accessToken`（JWT，默认 30 分钟）+ `refreshToken`（HttpOnly Cookie，7 天）。
 3. 后续请求携带 `Authorization: Bearer <accessToken>`。
 4. 过期 → `401 TOKEN_EXPIRED` → 调 `POST /auth/refresh` 静默换新（App 亦然）。
-5. 解锁状态由服务端 `lockMinutes` 控制；超过时长需重新登录。
+5. 会话时长由服务端 `config.json` 的 **`lockMinutes`** 决定，它**就是访问令牌的实际 TTL**
+   （`expiresIn = lockMinutes × 60`，登录与刷新共用同一取值）。修改 `lockMinutes` 只影响
+   **之后新签发**的令牌，已签发的令牌按原 TTL 自然过期。
 6. 失败 5 次 → `423 LOCKED_OUT`，冷却 15 分钟（配置可调）。
 
 ### 1.4 分页、排序、筛选（通用查询参数）
@@ -156,6 +158,9 @@ curl -X POST http://localhost:3100/api/v1/entries \
 ```
 Set-Cookie: refreshToken=<...>; HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth; Max-Age=604800
 ```
+
+> `expiresIn` 的单位是**秒**，取值等于 `config.json` 的 `lockMinutes × 60`（默认 30 分钟 → 1800）。
+> `Secure` 仅在 HTTPS 连接上附加，开发期 `http://localhost` 下不带，否则浏览器会丢弃该 Cookie。
 
 **错误**
 
@@ -437,7 +442,7 @@ Set-Cookie: refreshToken=<...>; HttpOnly; Secure; SameSite=Strict; Path=/api/v1/
 }
 ```
 
-**错误**：`404 NOT_FOUND`、`409 CONFLICT`（该条目无密码）、`423 LOCKED_OUT`（会话已锁定）
+**错误**：`404 NOT_FOUND`、`409 NO_PASSWORD`（该条目无密码）、`401 TOKEN_EXPIRED` / `TOKEN_INVALID`（会话失效需重新登录）
 
 ---
 
@@ -581,6 +586,7 @@ Set-Cookie: refreshToken=<...>; HttpOnly; Secure; SameSite=Strict; Path=/api/v1/
   "data": {
     "initialized": true,
     "lockMinutes": 30,
+    "failedAttempts": 5,
     "failedAttemptsRemaining": 5,
     "entryCount": 135,
     "categoryCount": 5,
@@ -589,7 +595,9 @@ Set-Cookie: refreshToken=<...>; HttpOnly; Secure; SameSite=Strict; Path=/api/v1/
 }
 ```
 
-> `failedAttemptsRemaining` 距上次失败的剩余可试次数，登录页可据此提示；锁定中时字段为 `0` 且带 `lockedUntil`。
+> `lockMinutes` 即会话时长，也是访问令牌的实际 TTL（分钟）；`failedAttempts` 是配置的失败次数上限，
+> `failedAttemptsRemaining` 是距上次失败后还可再试的次数。锁定中时 `failedAttemptsRemaining` 为 `0`
+> 且额外带 `lockedUntil`。
 
 ---
 
@@ -622,7 +630,7 @@ Set-Cookie: refreshToken=<...>; HttpOnly; Secure; SameSite=Strict; Path=/api/v1/
 
 | 字段 | 类型 | 约束 |
 | --- | --- | --- |
-| `lockMinutes` | int | 1-1440 |
+| `lockMinutes` | int | 1-1440，**会话时长 / 访问令牌 TTL（分钟）**，改动只影响之后新签发的令牌 |
 | `failedAttempts` | int | 3-10 |
 | `lockMinutesAfterBan` | int | 1-1440 |
 | `minPasswordLength` | int | 10-32 |
@@ -816,3 +824,4 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:3100/api/v1/entries/01JD
 | 版本 | 日期 | 修订内容 | 作者 |
 | --- | --- | --- | --- |
 | v1.0 | 2026-11-16 | 首次发布：29 个端点、信封规范、错误码总表、多端接入指引 | — |
+| v1.1 | 2026-11-16 | 实现校对，无破坏性变更：① §1.3/§2.2/§6.4 明确 `lockMinutes` 即访问令牌的实际 TTL（`expiresIn = lockMinutes × 60`），改配置只影响新签发的令牌；② §4.4 修正 `reveal` 的错误码——无密码应为 `409 NO_PASSWORD`（原写 `CONFLICT`），并删除实现中并不存在的 `423 LOCKED_OUT`；③ §6.2 补上实现已返回但文档缺失的 `failedAttempts` 字段；④ 补充 `Secure` Cookie 仅 HTTPS 下发的说明 | — |
