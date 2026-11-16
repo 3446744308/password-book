@@ -40,8 +40,22 @@ node scripts/dev.js
 **生产部署**：`npm --prefix web run build` 产出 `web/dist`，由 Express 直接托管（SPA 回退已内置），单进程即可运行：
 
 ```bash
-NODE_ENV=production npm --prefix server start
+npm --prefix server ci && npm --prefix web ci
+npm --prefix web run build
+cp server/.env.production.example server/.env   # 按需修改，默认即「IP 直连」配置
+node server/src/server.js
 ```
+
+生产有两条路，完整步骤见 [部署文档](docs/04-生产环境部署.md)：
+
+| 方式 | 需要改的配置 | 访问地址 |
+| --- | --- | --- |
+| **IP 直连**（不用 Nginx） | `HOST=0.0.0.0`、`NODE_ENV=production`、`AUTH_MODE=strict`、`TRUST_PROXY=false` | `http://<服务器IP>:3100` |
+| **Nginx 反代**（推荐，有 HTTPS） | `HOST=127.0.0.1`、`TRUST_PROXY=true`，反代需传 `X-Forwarded-Proto` | `https://<你的域名>` |
+
+> ⚠️ 最常见的坑是 `HOST`：默认 `127.0.0.1` 只监听回环，用服务器 IP 访问会「连接被拒」。
+> IP 直连没有 TLS（主密码明文过网），只适合内网或完全可信的网络。
+> 前端代码里没有写死任何地址（请求一律走相对路径 `/api/v1`），换 IP / 域名 / 端口都不需要改代码。
 
 ## 目录结构
 
