@@ -152,6 +152,36 @@ body {
   margin-top: 4px;
 }
 
+/* ===== 条目详情抽屉 ===== */
+
+.entry-detail .ant-descriptions-item-label {
+  width: 88px;
+}
+
+.entry-detail-empty {
+  opacity: 0.45;
+}
+
+/* 备注保留用户输入的换行 */
+.entry-detail-notes {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.entry-detail-id {
+  font-size: 12px;
+}
+
+.entry-detail-hint {
+  font-size: 12px;
+}
+
+.entry-detail-loading {
+  display: flex;
+  justify-content: center;
+  padding: 48px 0;
+}
+
 /* ===== 系统设置页 ===== */
 
 /* 页面占满内容区（不再限宽居中）；留白交给 .app-content 的下内边距 */

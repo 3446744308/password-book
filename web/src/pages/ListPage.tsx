@@ -5,6 +5,7 @@ import {
   CopyOutlined,
   DeleteOutlined,
   EditOutlined,
+  EyeOutlined,
   HistoryOutlined,
   LinkOutlined,
   PlusOutlined,
@@ -12,6 +13,7 @@ import {
 } from '@ant-design/icons';
 import SecretField from '../components/SecretField';
 import EntryModal from '../components/EntryModal';
+import EntryDetailDrawer from '../components/EntryDetailDrawer';
 import HistoryDrawer from '../components/HistoryDrawer';
 import useDataStore from '../stores/dataStore';
 import { deleteEntry } from '../api';
@@ -40,6 +42,7 @@ export default function ListPage() {
   const [search, setSearch] = useState(keyword);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | undefined>(undefined);
+  const [detailId, setDetailId] = useState<string | undefined>(undefined);
   const [historyId, setHistoryId] = useState<string | undefined>(undefined);
 
   // 初次加载
@@ -151,14 +154,23 @@ export default function ListPage() {
     {
       title: '操作',
       key: 'actions',
-      width: 150,
+      width: 190,
       fixed: 'right',
       render: (_, record) => (
         <Space size={2}>
           <Button
             size="small"
             type="text"
+            aria-label="查看详情"
+            title="查看详情"
+            icon={<EyeOutlined />}
+            onClick={() => setDetailId(record.id)}
+          />
+          <Button
+            size="small"
+            type="text"
             aria-label="编辑"
+            title="编辑"
             icon={<EditOutlined />}
             onClick={() => {
               setEditingId(record.id);
@@ -169,6 +181,7 @@ export default function ListPage() {
             size="small"
             type="text"
             aria-label="历史版本"
+            title="历史版本"
             icon={<HistoryOutlined />}
             onClick={() => setHistoryId(record.id)}
           />
@@ -180,7 +193,14 @@ export default function ListPage() {
             okButtonProps={{ danger: true }}
             onConfirm={() => handleDelete(record.id)}
           >
-            <Button size="small" type="text" danger aria-label="删除" icon={<DeleteOutlined />} />
+            <Button
+              size="small"
+              type="text"
+              danger
+              aria-label="删除"
+              title="删除"
+              icon={<DeleteOutlined />}
+            />
           </Popconfirm>
         </Space>
       ),
@@ -245,6 +265,25 @@ export default function ListPage() {
           onChange: (page, size) => {
             void loadEntries({ page, size: size || pagination.size });
           },
+        }}
+      />
+
+      <EntryDetailDrawer
+        open={Boolean(detailId)}
+        entryId={detailId}
+        onClose={() => setDetailId(undefined)}
+        onEdit={(id) => {
+          setDetailId(undefined);
+          setEditingId(id);
+          setModalOpen(true);
+        }}
+        onShowHistory={(id) => {
+          setDetailId(undefined);
+          setHistoryId(id);
+        }}
+        onDelete={(id) => {
+          setDetailId(undefined);
+          void handleDelete(id);
         }}
       />
 
