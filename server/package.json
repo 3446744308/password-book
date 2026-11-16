@@ -15,7 +15,8 @@
     "format": "prettier --write . --ignore-path ../.prettierignore --config ../.prettierrc.json",
     "format:check": "prettier --check . --ignore-path ../.prettierignore --config ../.prettierrc.json",
     "backup": "node ../scripts/backup.js",
-    "scan": "node ../scripts/scan-plaintext.js"
+    "scan": "node ../scripts/scan-plaintext.js",
+    "check:api-doc": "node ../scripts/check-api-doc.js"
   },
   "dependencies": {
     "express": "^4.21.2"

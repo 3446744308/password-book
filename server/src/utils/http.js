@@ -1,4 +1,4 @@
-/** HTTP 响应辅助：统一信封（docs/03 §1.2.1） */
+/** HTTP 响应辅助：统一信封（docs/03 §1.2） */
 
 /** 包装异步路由处理器，异常转交错误中间件 */
 export const h = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);

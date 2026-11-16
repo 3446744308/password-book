@@ -143,11 +143,12 @@ node scripts/scan-plaintext.js --json # 机器可读
 | --- | --- | --- |
 | 仓库根 | `node scripts/dev.js` | **一条命令同时启动前后端** |
 | `server/` | `npm run dev` | 只启动后端（`--watch` 热重启） |
-| `server/` | `npm test` | 后端 100 个接口/单元用例 |
+| `server/` | `npm test` | 后端 104 个接口/单元用例 |
 | `server/` | `npm run lint` | ESLint |
 | `server/` | `npm run format` / `format:check` | Prettier 格式化 / 只校验 |
 | `server/` | `npm run backup` | 手动备份 `data/` |
 | `server/` | `npm run scan` | 明文扫描：断言 `data/` 无明文密码字段 |
+| `server/` | `npm run check:api-doc` | 校验 `docs/03` 与实际路由一致（漂移即失败） |
 | `web/` | `npm run dev` | Vite 开发服务器 |
 | `web/` | `npm run build` | 类型检查 + 生产构建 |
 | `web/` | `npm test` | 前端 91 个单元/组件/契约/守卫用例 |
@@ -167,7 +168,7 @@ node scripts/scan-plaintext.js --json # 机器可读
 
 ## 测试
 
-- **后端（100 个用例）**：Vitest + 真实 HTTP 请求。覆盖加解密（含密文篡改、错误密钥）、KDF/verifier、JWT 篡改与过期、ULID；原子写与 50 路并发写队列；登录限速与 5 次失败锁定；30 个端点的正常/参数非法/未认证/不存在四类路径；会话生命周期（登出/刷新/换主密码后旧令牌失效）；日志落盘与脱敏；明文扫描器自身的 10 个用例；内置分类播种（幂等、删除后不复活、老库补写）与 `GET /system/presets`。每个用例自建临时 `data/` 目录并在结束时删除。
+- **后端（104 个用例）**：Vitest + 真实 HTTP 请求。覆盖加解密（含密文篡改、错误密钥）、KDF/verifier、JWT 篡改与过期、ULID；原子写与 50 路并发写队列；登录限速与 5 次失败锁定；30 个端点的正常/参数非法/未认证/不存在四类路径；会话生命周期（登出/刷新/换主密码后旧令牌失效）；日志落盘与脱敏；明文扫描器自身的 10 个用例；内置分类播种（幂等、删除后不复活、老库补写）与 `GET /system/presets`。每个用例自建临时 `data/` 目录并在结束时删除。
 - **前端（91 个用例）**：Vitest + jsdom + `@testing-library/react`。
   - 纯逻辑：密码生成（拒绝采样无取模偏差、排除易混淆字符、熵值分级）、已有密码的强度反馈（按实际字符类别算池大小并分级）、时间/体积格式化、错误文案与表单回填。
   - 组件：`SecretField`（默认掩码、点击才 reveal、失焦/切后台立即掩码、30 秒自动掩码、复制路径）、`PasswordGenerator`（默认 20 位、回传、熵值标签）、`AutoLock`（空闲超时锁定、未超时不锁、未登录不动作）、`EntryModal` 分区表单（基本信息 / 密码 / 归类与备注）与内置标签快捷选择（点选/取消、10 个上限、无候选时不渲染）；`EntryDetailDrawer` 条目详情（字段渲染、密码默认掩码、账号复制、编辑/历史/删除跳转、空值与加载失败）；条目列表「详情」入口到编辑弹窗的衔接。
@@ -185,6 +186,6 @@ node scripts/scan-plaintext.js --json # 机器可读
 | --- | --- |
 | [01-开发设计文档](docs/01-开发设计文档.md) | 架构、数据设计、安全模型、里程碑 |
 | [02-统一开发规范](docs/02-统一开发规范.md) | 强制条款：API 信封、命名、安全、Git、测试 |
-| [03-API接口文档](docs/03-API接口文档.md) | 29 个端点的唯一权威源 |
+| [03-API接口文档](docs/03-API接口文档.md) | 30 个端点的唯一权威源（含数据字典、错误码、审计事件对照） |
 
 改任何端点都要同步 `docs/03`。前端与未来 App 只依据它开发，不要靠读后端源码倒推接口。
